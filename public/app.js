@@ -61,18 +61,11 @@ async function loadUsers() {
   await refreshWallet();
 }
 
+// Balances live on the Portfolio page; this only keeps the market page's
+// open-orders table in sync with the selected account.
 async function refreshWallet() {
-  // The home page has no wallet strip; the markets list speaks for itself.
-  if (!currentUserId || currentPage === 'home') {
-    $('wallet').classList.add('hidden');
-    return;
-  }
+  if (!currentUserId || currentPage !== 'market') return;
   const user = await api(`/api/users/${currentUserId}`);
-  $('wallet').classList.remove('hidden');
-  $('wallet-cash').textContent = `Cash: ${fmt(user.balance)}`;
-  $('wallet-holdings').textContent = orgs
-    .map((o) => `${o.ticker}: ${user.holdings[o.id] ?? 0}`)
-    .join('  ·  ');
   renderOpenOrders(user.openOrders.filter((o) => o.org === currentOrg));
 }
 
@@ -295,32 +288,42 @@ function renderOwnership(holders) {
   svg.innerHTML = '';
   legend.innerHTML = '';
   const NS = 'http://www.w3.org/2000/svg';
-  const cx = 120, cy = 120, r = 110;
+  const cx = 120, cy = 120, r = 110, r0 = 62;
   let angle = -Math.PI / 2;
 
   for (const seg of segments) {
     const pct = (seg.shares / total) * 100;
     let el;
     if (segments.length === 1) {
+      // A full ring; arc paths degenerate at 360°, so stroke a circle instead.
       el = document.createElementNS(NS, 'circle');
       el.setAttribute('cx', cx);
       el.setAttribute('cy', cy);
-      el.setAttribute('r', r);
+      el.setAttribute('r', (r + r0) / 2);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', seg.color);
+      el.setAttribute('stroke-width', r - r0);
     } else {
       const a0 = angle;
       const a1 = angle + (seg.shares / total) * 2 * Math.PI;
       angle = a1;
       const large = a1 - a0 > Math.PI ? 1 : 0;
-      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
-      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const xo0 = cx + r * Math.cos(a0), yo0 = cy + r * Math.sin(a0);
+      const xo1 = cx + r * Math.cos(a1), yo1 = cy + r * Math.sin(a1);
+      const xi0 = cx + r0 * Math.cos(a0), yi0 = cy + r0 * Math.sin(a0);
+      const xi1 = cx + r0 * Math.cos(a1), yi1 = cy + r0 * Math.sin(a1);
       el = document.createElementNS(NS, 'path');
-      el.setAttribute('d', `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`);
+      el.setAttribute(
+        'd',
+        `M ${xo0} ${yo0} A ${r} ${r} 0 ${large} 1 ${xo1} ${yo1} ` +
+          `L ${xi1} ${yi1} A ${r0} ${r0} 0 ${large} 0 ${xi0} ${yi0} Z`
+      );
+      el.setAttribute('fill', seg.color);
+      // Surface-color separator between segments.
+      el.setAttribute('stroke', '#fff');
+      el.setAttribute('stroke-width', '2');
+      el.setAttribute('stroke-linejoin', 'round');
     }
-    el.setAttribute('fill', seg.color);
-    // Surface-color separator between slices.
-    el.setAttribute('stroke', '#fff');
-    el.setAttribute('stroke-width', '2');
-    el.setAttribute('stroke-linejoin', 'round');
     el.addEventListener('mousemove', (e) => {
       tooltip.textContent = `${seg.name} — ${seg.shares.toLocaleString()} shares (${pct.toFixed(1)}%)`;
       tooltip.classList.remove('hidden');
