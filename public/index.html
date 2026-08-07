@@ -48,10 +48,20 @@
       <a id="org-link" target="_blank" rel="noopener"></a>
     </section>
 
-    <section class="panel">
-      <h3>Price history</h3>
-      <div id="chart-container"><svg id="price-chart"></svg></div>
-    </section>
+    <div class="columns">
+      <section class="panel">
+        <h3>Price history</h3>
+        <div id="chart-container"><svg id="price-chart"></svg></div>
+      </section>
+
+      <section class="panel">
+        <h3>Ownership</h3>
+        <div class="own-wrap">
+          <svg id="ownership-pie" viewBox="0 0 240 240" width="220" height="220"></svg>
+          <div id="ownership-legend" class="own-legend"></div>
+        </div>
+      </section>
+    </div>
 
     <div class="columns">
       <section class="panel">
@@ -96,13 +106,6 @@
       </table>
     </section>
 
-    <section class="panel">
-      <h3>Ownership</h3>
-      <div class="own-wrap">
-        <svg id="ownership-pie" viewBox="0 0 240 240" width="220" height="220"></svg>
-        <div id="ownership-legend" class="own-legend"></div>
-      </div>
-    </section>
   </main>
 
   <dialog id="admin-dialog">
