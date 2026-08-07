@@ -202,7 +202,7 @@ function sparkline(prices, w = 260, h = 40) {
     .join(' ');
   return (
     `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">` +
-    `<polyline points="${pts}" fill="none" stroke="#2e5a7a" stroke-width="1.5" ` +
+    `<polyline points="${pts}" fill="none" stroke="#1D4E74" stroke-width="1.5" ` +
     `stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`
   );
 }
@@ -255,10 +255,12 @@ async function refreshMarket() {
   await refreshWallet();
 }
 
-// Categorical palette (validated for CVD separation; sub-3:1 slots are
-// covered by the legend listing every value). Treasury always wears slot 1.
-const SERIES_COLORS = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4'];
-const OTHER_COLOR = '#c3c2b7';
+// Prussian & Ochre chart series — solved (not picked) against this paper for
+// CVD separation, chroma, and 3:1 contrast; see design/README-restyle.md.
+// Treasury always wears slot 1.
+const SERIES_COLORS = ['#0457AA', '#069096', '#9C7820', '#943432', '#9967AF'];
+const OTHER_COLOR = '#9AA1AC';
+const PAPER = '#F6F5F1';
 
 function renderOwnership(holders) {
   const svg = $('ownership-pie');
@@ -272,12 +274,12 @@ function renderOwnership(holders) {
   }
 
   // The org's own account (unissued shares) first, then the top holders;
-  // everyone under 1% or beyond the 6 named slots folds into "Other" so
-  // slices stay visible and hues stay fixed.
+  // everyone under 1% or beyond the 4 named slots folds into "Other" so the
+  // ring never needs more than the 5 solved series hues.
   const orgName = orgs.find((o) => o.id === currentOrg).name;
   const treasury = holders.find((h) => h.name === orgName);
   const rest = holders.filter((h) => h !== treasury);
-  const named = rest.filter((h, i) => i < 6 && h.shares / total >= 0.01);
+  const named = rest.filter((h, i) => i < 4 && h.shares / total >= 0.01);
   const otherShares = rest.filter((h) => !named.includes(h)).reduce((s, h) => s + h.shares, 0);
 
   const segments = [];
@@ -319,8 +321,8 @@ function renderOwnership(holders) {
           `L ${xi1} ${yi1} A ${r0} ${r0} 0 ${large} 0 ${xi0} ${yi0} Z`
       );
       el.setAttribute('fill', seg.color);
-      // Surface-color separator between segments.
-      el.setAttribute('stroke', '#fff');
+      // Paper-color separator between segments.
+      el.setAttribute('stroke', PAPER);
       el.setAttribute('stroke-width', '2');
       el.setAttribute('stroke-linejoin', 'round');
     }
@@ -391,7 +393,7 @@ function renderChart(trades) {
     .reverse()
     .map((t) => ({ time: parseTs(t.created_at).getTime(), price: t.price }));
   if (data.length < 2) {
-    svg.innerHTML = `<text x="${w / 2}" y="${h / 2}" text-anchor="middle" fill="#8b877c" font-size="14">Not enough trades yet</text>`;
+    svg.innerHTML = `<text x="${w / 2}" y="${h / 2}" text-anchor="middle" fill="#586374" font-size="14">Not enough trades yet</text>`;
     svg.onmousemove = svg.onmouseleave = null;
     return;
   }
@@ -415,8 +417,8 @@ function renderChart(trades) {
     const gy = y(v);
     const label = step % 100 === 0 ? fmtWhole(v) : fmt(v);
     grid +=
-      `<line x1="${m.left}" y1="${gy}" x2="${w - m.right}" y2="${gy}" stroke="#ecebe4"/>` +
-      `<text x="${m.left + 2}" y="${gy - 5}" fill="#8b877c" font-size="11">${label}</text>`;
+      `<line x1="${m.left}" y1="${gy}" x2="${w - m.right}" y2="${gy}" stroke="#E3E2D9"/>` +
+      `<text x="${m.left + 2}" y="${gy - 5}" fill="#586374" font-size="11">${label}</text>`;
   }
 
   // Time axis: a few evenly spaced ticks, labeled to match the span.
@@ -434,16 +436,16 @@ function renderChart(trades) {
     seen.add(label);
     const tx = x(t0 + span * f);
     const anchor = tx < m.left + 40 ? 'start' : tx > w - m.right - 40 ? 'end' : 'middle';
-    axis += `<text x="${tx}" y="${h - 8}" text-anchor="${anchor}" fill="#8b877c" font-size="11">${label}</text>`;
+    axis += `<text x="${tx}" y="${h - 8}" text-anchor="${anchor}" fill="#586374" font-size="11">${label}</text>`;
   }
 
   const path = data.map((d) => `${x(d.time)},${y(d.price)}`).join(' ');
   svg.innerHTML =
     grid +
     axis +
-    `<polyline points="${path}" fill="none" stroke="#2e5a7a" stroke-width="2" stroke-linejoin="round"/>` +
-    `<line class="ch-line" y1="${m.top}" y2="${h - m.bottom}" stroke="#d8d5cb" visibility="hidden"/>` +
-    `<circle class="ch-dot" r="3.5" fill="#2e5a7a" stroke="#fff" stroke-width="1.5" visibility="hidden"/>`;
+    `<polyline points="${path}" fill="none" stroke="#1D4E74" stroke-width="2" stroke-linejoin="round"/>` +
+    `<line class="ch-line" y1="${m.top}" y2="${h - m.bottom}" stroke="#B9BFC9" visibility="hidden"/>` +
+    `<circle class="ch-dot" r="3.5" fill="#1D4E74" stroke="${PAPER}" stroke-width="1.5" visibility="hidden"/>`;
 
   // Hover: nearest trade gets a crosshair, dot, and tooltip.
   const chLine = svg.querySelector('.ch-line');

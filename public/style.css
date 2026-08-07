@@ -1,15 +1,18 @@
 * { box-sizing: border-box; }
 
+/* Prussian & Ochre palette, from design/README-restyle.md (WCAG-audited). */
 :root {
-  --bg: #f4f3ef;
-  --surface: #ffffff;
-  --ink: #23221e;
-  --ink-2: #55524a;
-  --muted: #8b877c;
-  --border: #e3e1d8;
-  --hairline: #eeede7;
-  --accent: #2e5a7a;
-  --accent-dark: #234a66;
+  --bg: #F6F5F1;
+  --surface: #FBFAF7;
+  --panel: rgba(246, 245, 241, .9);
+  --ink: #15202E;
+  --ink-2: #586374;
+  --muted: #6E7889;
+  --border: #DBD9CE;
+  --hairline: #E7E5DE;
+  --border-strong: #878D96;
+  --accent: #1D4E74;
+  --accent-dark: #143852;
   --bid: #2e7d4f;
   --ask: #ae4a3f;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -24,6 +27,25 @@ body {
   line-height: 1.5;
 }
 
+/* Two fixed background layers: a watercolour wash fading blue to marigold,
+   and Prussian contour lines masked away from the content column so the
+   pattern lives in the margins, never under numbers. */
+body::before, body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: center/cover no-repeat;
+}
+body::before { background-image: url(/bg-wash.svg); opacity: .4; }
+body::after {
+  background-image: url(/bg-contours.svg);
+  opacity: .15;
+  mask-image: radial-gradient(ellipse 62% 55% at 50% 45%, transparent 35%, #000 100%);
+  -webkit-mask-image: radial-gradient(ellipse 62% 55% at 50% 45%, transparent 35%, #000 100%);
+}
+
 header {
   display: flex;
   align-items: center;
@@ -31,7 +53,8 @@ header {
   flex-wrap: wrap;
   gap: 12px;
   padding: 18px 32px;
-  background: var(--surface);
+  background: var(--panel);
+  backdrop-filter: blur(3px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -43,6 +66,8 @@ header h1 {
   letter-spacing: .01em;
   cursor: pointer;
 }
+header h1 em { font-style: italic; color: var(--accent); }
+.panel h3 em { font-style: italic; color: var(--accent); font-weight: 400; }
 
 .account-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .account-bar label { font-size: 14px; color: var(--ink-2); }
@@ -52,7 +77,8 @@ select, input, button {
   font-size: 14px;
   padding: 7px 12px;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  /* Control borders need 3:1 against paper; --border is too faint. */
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: inherit;
 }
@@ -64,7 +90,7 @@ button {
   cursor: pointer;
 }
 button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
-button.ghost { background: transparent; border-color: var(--border); color: var(--ink-2); }
+button.ghost { background: transparent; border-color: var(--border-strong); color: var(--ink-2); }
 button.ghost:hover { background: transparent; border-color: var(--muted); color: var(--ink); }
 
 .layout {
@@ -127,8 +153,11 @@ main { padding: 8px 0 64px; }
 .org-header p { margin: 4px 0; color: var(--ink-2); max-width: 720px; }
 .org-header a { font-size: 14px; color: var(--accent); }
 
+/* Content sits on its own translucent sheet of paper; the background
+   shows faintly through but never costs contrast under the data. */
 .panel {
-  background: var(--surface);
+  background: var(--panel);
+  backdrop-filter: blur(3px);
   border: 1px solid var(--border);
   border-radius: 2px;
   padding: 20px 24px;
