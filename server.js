@@ -360,7 +360,7 @@ app.get('/api/leaderboard', (req, res) => {
   res.json(
     Object.values(byUser)
       .sort((a, b) => b.value - a.value)
-      .slice(0, 25)
+      .slice(0, 20)
   );
 });
 

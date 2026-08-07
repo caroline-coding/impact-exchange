@@ -38,6 +38,8 @@ async function api(path, body) {
   return data;
 }
 
+$('site-title').addEventListener('click', () => showPage('home'));
+
 // --- Accounts ---
 async function loadUsers() {
   const users = await api('/api/users');
@@ -110,10 +112,19 @@ function renderTabs() {
   };
   tab('Home', currentPage === 'home', () => showPage('home'));
   tab('About', currentPage === 'about', () => showPage('about'));
-  tab(`${marketsExpanded ? '▾' : '▸'} Markets`, false, () => {
+  // "Markets" lines up with the other items; the +/− toggle sign hangs in
+  // the gutter to its left.
+  const group = document.createElement('button');
+  group.className = 'group';
+  const sign = document.createElement('span');
+  sign.className = 'sign';
+  sign.textContent = marketsExpanded ? '−' : '+';
+  group.append(sign, 'Markets');
+  group.addEventListener('click', () => {
     marketsExpanded = !marketsExpanded;
     renderTabs();
-  }, 'group');
+  });
+  nav.appendChild(group);
   if (marketsExpanded) {
     for (const org of orgs) {
       tab(org.ticker, currentPage === 'market' && currentOrg === org.id, () =>
