@@ -1,0 +1,9 @@
+node_modules/
+ADMIN_PASSWORD.txt
+*.log
+
+# Live database (Dockerfile bundles exchange.db as a first-boot seed snapshot,
+# but the working copy mutates constantly — don't track it)
+exchange.db
+exchange.db-shm
+exchange.db-wal

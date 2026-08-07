@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Impact Exchange</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Impact Exchange</h1>
+    <div class="account-bar">
+      <label for="user-select">Account:</label>
+      <select id="user-select"></select>
+      <input id="new-user-name" placeholder="New account name">
+      <button id="create-user-btn">Create</button>
+      <button id="admin-btn" class="ghost">Admin</button>
+    </div>
+  </header>
+
+  <div id="wallet" class="wallet hidden">
+    <span id="wallet-cash"></span>
+    <span id="wallet-holdings"></span>
+  </div>
+
+  <nav id="org-tabs"></nav>
+
+  <main id="home-view" class="hidden">
+    <div class="home-grid">
+      <section class="panel">
+        <h3>Markets</h3>
+        <div id="home-orgs" class="home-orgs"></div>
+      </section>
+      <section class="panel">
+        <h3>Leaderboard — largest portfolios</h3>
+        <table>
+          <thead><tr><th>#</th><th>Holder</th><th>Value</th></tr></thead>
+          <tbody id="leaderboard"></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <main id="org-view" class="hidden">
+    <section class="org-header">
+      <h2 id="org-name"></h2>
+      <p id="org-blurb"></p>
+      <a id="org-link" target="_blank" rel="noopener"></a>
+    </section>
+
+    <section class="panel">
+      <h3>Price history</h3>
+      <div id="chart-container"><svg id="price-chart"></svg></div>
+    </section>
+
+    <div class="columns">
+      <section class="panel">
+        <h3>Order book</h3>
+        <div class="book">
+          <table>
+            <thead><tr><th>Bid qty</th><th>Bid</th></tr></thead>
+            <tbody id="bids"></tbody>
+          </table>
+          <table>
+            <thead><tr><th>Ask</th><th>Ask qty</th></tr></thead>
+            <tbody id="asks"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Place order</h3>
+        <form id="order-form">
+          <div class="side-toggle">
+            <label><input type="radio" name="side" value="buy" checked> Buy</label>
+            <label><input type="radio" name="side" value="sell"> Sell</label>
+          </div>
+          <label>Price ($) <input id="order-price" type="number" step="0.01" min="0.01" required></label>
+          <label>Quantity <input id="order-qty" type="number" step="1" min="1" required></label>
+          <button type="submit">Submit order</button>
+          <p id="order-error" class="error"></p>
+        </form>
+        <h3>Your open orders</h3>
+        <table>
+          <thead><tr><th>Side</th><th>Price</th><th>Left</th><th></th></tr></thead>
+          <tbody id="open-orders"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h3>Trade history</h3>
+      <table>
+        <thead><tr><th>When</th><th>Price</th><th>Qty</th><th>Total</th><th>Buyer</th><th>Seller</th></tr></thead>
+        <tbody id="trades"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h3>Ownership</h3>
+      <div class="own-wrap">
+        <svg id="ownership-pie" viewBox="0 0 240 240" width="220" height="220"></svg>
+        <div id="ownership-legend" class="own-legend"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="admin-dialog">
+    <h3>Admin: grant funds</h3>
+    <form id="admin-form" method="dialog">
+      <label>Password <input id="admin-password" type="password" required></label>
+      <label>User
+        <select id="admin-user"></select>
+      </label>
+      <label>Cash to grant ($) <input id="admin-cash" type="number" step="0.01" value="0"></label>
+      <label>Shares to grant
+        <div class="row">
+          <select id="admin-org"></select>
+          <input id="admin-shares" type="number" step="1" value="0">
+        </div>
+      </label>
+      <div class="row">
+        <button type="button" id="admin-grant-btn">Grant</button>
+        <button type="button" id="admin-close-btn" class="ghost">Close</button>
+      </div>
+      <p id="admin-msg"></p>
+    </form>
+  </dialog>
+
+  <div id="own-tooltip" class="own-tooltip hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
