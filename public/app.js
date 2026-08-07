@@ -60,7 +60,8 @@ async function loadUsers() {
 }
 
 async function refreshWallet() {
-  if (!currentUserId) {
+  // The home page has no wallet strip; the markets list speaks for itself.
+  if (!currentUserId || currentPage === 'home') {
     $('wallet').classList.add('hidden');
     return;
   }
@@ -95,30 +96,38 @@ $('create-user-btn').addEventListener('click', async () => {
 
 // --- Navigation ---
 const VIEWS = { home: 'home-view', market: 'org-view', about: 'about-view', portfolio: 'portfolio-view' };
+let marketsExpanded = false;
 
 function renderTabs() {
-  const nav = $('org-tabs');
+  const nav = $('sidebar');
   nav.innerHTML = '';
-  const tab = (label, active, onClick) => {
+  const tab = (label, active, onClick, cls = '') => {
     const btn = document.createElement('button');
     btn.textContent = label;
-    btn.className = active ? 'active' : '';
+    btn.className = `${cls}${active ? ' active' : ''}`;
     btn.addEventListener('click', onClick);
     nav.appendChild(btn);
   };
   tab('Home', currentPage === 'home', () => showPage('home'));
-  for (const org of orgs) {
-    tab(org.ticker, currentPage === 'market' && currentOrg === org.id, () =>
-      showPage('market', org.id)
-    );
-  }
   tab('About', currentPage === 'about', () => showPage('about'));
+  tab(`${marketsExpanded ? '▾' : '▸'} Markets`, false, () => {
+    marketsExpanded = !marketsExpanded;
+    renderTabs();
+  }, 'group');
+  if (marketsExpanded) {
+    for (const org of orgs) {
+      tab(org.ticker, currentPage === 'market' && currentOrg === org.id, () =>
+        showPage('market', org.id), 'sub');
+    }
+  }
   tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
 }
 
 async function showPage(page, orgId = null) {
   currentPage = page;
   currentOrg = page === 'market' ? orgId : null;
+  // Keep the active ticker visible in the sidebar.
+  if (page === 'market') marketsExpanded = true;
   for (const [p, viewId] of Object.entries(VIEWS)) {
     $(viewId).classList.toggle('hidden', p !== page);
   }
@@ -146,7 +155,10 @@ async function refreshHome() {
 
   const list = $('home-orgs');
   list.innerHTML = '';
-  for (const org of orgs) {
+  const byValuation = [...orgs].sort(
+    (a, b) => (b.lastPrice ?? 0) * b.totalShares - (a.lastPrice ?? 0) * a.totalShares
+  );
+  for (const org of byValuation) {
     const valuation = org.lastPrice ? fmtCompact(org.lastPrice * org.totalShares) : '—';
     const card = document.createElement('div');
     card.className = 'org-card';

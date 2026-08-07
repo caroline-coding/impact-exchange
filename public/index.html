@@ -18,14 +18,15 @@
     </div>
   </header>
 
-  <div id="wallet" class="wallet hidden">
-    <span id="wallet-cash"></span>
-    <span id="wallet-holdings"></span>
-  </div>
+  <div class="layout">
+    <nav id="sidebar"></nav>
+    <div class="content">
+      <div id="wallet" class="wallet hidden">
+        <span id="wallet-cash"></span>
+        <span id="wallet-holdings"></span>
+      </div>
 
-  <nav id="org-tabs"></nav>
-
-  <main id="home-view" class="hidden">
+      <main id="home-view" class="hidden">
     <div class="home-grid">
       <section class="panel">
         <h3>Markets</h3>
@@ -125,6 +126,8 @@
       <p id="portfolio-total"></p>
     </section>
   </main>
+    </div>
+  </div>
 
   <dialog id="admin-dialog">
     <h3>Admin: grant funds</h3>
