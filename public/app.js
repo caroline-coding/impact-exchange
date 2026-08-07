@@ -125,6 +125,7 @@ function renderTabs() {
     }
   }
   tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
+  tab('Admin', false, () => $('admin-dialog').showModal(), 'admin');
 }
 
 async function showPage(page, orgId = null) {
@@ -526,7 +527,6 @@ $('order-form').addEventListener('submit', async (e) => {
 });
 
 // --- Admin ---
-$('admin-btn').addEventListener('click', () => $('admin-dialog').showModal());
 $('admin-close-btn').addEventListener('click', () => $('admin-dialog').close());
 $('admin-grant-btn').addEventListener('click', async () => {
   const msg = $('admin-msg');

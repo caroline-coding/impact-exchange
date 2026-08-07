@@ -46,21 +46,22 @@ body::after {
   -webkit-mask-image: radial-gradient(ellipse 62% 55% at 50% 45%, transparent 35%, #000 100%);
 }
 
+/* The wordmark sits straight on the background wash; only the account
+   switcher carries a card. */
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 18px 32px;
-  background: var(--panel);
-  backdrop-filter: blur(3px);
-  border-bottom: 1px solid var(--border);
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 22px 32px 0;
 }
 
 header h1 {
   font-family: var(--serif);
-  font-size: 24px;
+  font-size: 32px;
   margin: 0;
   font-weight: 600;
   letter-spacing: .01em;
@@ -69,7 +70,17 @@ header h1 {
 header h1 em { font-style: italic; color: var(--accent); }
 .panel h3 em { font-style: italic; color: var(--accent); font-weight: 400; }
 
-.account-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.account-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--panel);
+  backdrop-filter: blur(3px);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
 .account-bar label { font-size: 14px; color: var(--ink-2); }
 
 select, input, button {
@@ -132,6 +143,13 @@ nav button:hover { background: none; color: var(--ink); }
 nav button.active { background: none; color: var(--ink); font-weight: 600; border-left-color: var(--accent); }
 nav button.sub { padding-left: 32px; font-size: 14px; }
 nav button.group { position: relative; }
+nav button.admin {
+  margin-top: 10px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
 nav button.group .sign {
   position: absolute;
   left: 3px;
@@ -152,6 +170,7 @@ main { padding: 8px 0 64px; }
     padding: 8px;
   }
   nav button.sub { padding-left: 14px; }
+  nav button.admin { margin-top: 0; border-top: none; padding-top: 6px; }
   .content { width: 100%; }
 }
 
