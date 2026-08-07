@@ -133,9 +133,11 @@ th {
 td { font-variant-numeric: lining-nums tabular-nums; }
 td:first-child, th:first-child { text-align: left; }
 tbody tr:last-child td { border-bottom: none; }
-/* Name columns read left-aligned: leaderboard holders, trade counterparties. */
+/* Name columns read left-aligned: leaderboard holders, trade counterparties,
+   portfolio org names. */
 table:has(#leaderboard) th:nth-child(2), table:has(#leaderboard) td:nth-child(2),
-table:has(#trades) th:nth-child(n+5), table:has(#trades) td:nth-child(n+5) { text-align: left; }
+table:has(#trades) th:nth-child(n+5), table:has(#trades) td:nth-child(n+5),
+table:has(#portfolio-holdings) th:nth-child(2), table:has(#portfolio-holdings) td:nth-child(2) { text-align: left; }
 
 .bid { color: var(--bid); }
 .ask { color: var(--ask); }
@@ -203,7 +205,30 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px;
   align-items: center;
   gap: 8px;
 }
-.org-card .price { margin-left: auto; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
+.org-card .ticker-big {
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.org-card .valuation {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.org-card-name {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+.spark {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: 10px;
+}
+.spark-empty { height: 40px; margin-top: 10px; }
 .org-logo {
   width: 22px;
   height: 22px;
@@ -218,14 +243,6 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px;
   vertical-align: -7px;
   margin-right: 10px;
 }
-.org-card .ticker {
-  font-family: var(--sans);
-  font-size: 11px;
-  letter-spacing: .05em;
-  color: var(--muted);
-  margin-top: 2px;
-}
-.org-card p { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
 
 /* Ownership chart */
 .own-wrap {

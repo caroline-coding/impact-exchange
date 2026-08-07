@@ -1,5 +1,6 @@
 let orgs = [];
-let currentOrg = null;
+let currentPage = 'home'; // 'home' | 'market' | 'about' | 'portfolio'
+let currentOrg = null; // org id when currentPage === 'market'
 let currentUserId = Number(localStorage.getItem('userId')) || null;
 
 const $ = (id) => document.getElementById(id);
@@ -92,41 +93,50 @@ $('create-user-btn').addEventListener('click', async () => {
   }
 });
 
-// --- Org tabs ---
+// --- Navigation ---
+const VIEWS = { home: 'home-view', market: 'org-view', about: 'about-view', portfolio: 'portfolio-view' };
+
 function renderTabs() {
   const nav = $('org-tabs');
   nav.innerHTML = '';
-  const home = document.createElement('button');
-  home.textContent = 'Home';
-  home.className = currentOrg === null ? 'active' : '';
-  home.addEventListener('click', () => selectOrg(null));
-  nav.appendChild(home);
-  for (const org of orgs) {
+  const tab = (label, active, onClick) => {
     const btn = document.createElement('button');
-    btn.textContent = `${org.name}${org.lastPrice ? ' · ' + fmt(org.lastPrice) : ''}`;
-    btn.className = org.id === currentOrg ? 'active' : '';
-    btn.addEventListener('click', () => selectOrg(org.id));
+    btn.textContent = label;
+    btn.className = active ? 'active' : '';
+    btn.addEventListener('click', onClick);
     nav.appendChild(btn);
+  };
+  tab('Home', currentPage === 'home', () => showPage('home'));
+  for (const org of orgs) {
+    tab(org.ticker, currentPage === 'market' && currentOrg === org.id, () =>
+      showPage('market', org.id)
+    );
   }
+  tab('About', currentPage === 'about', () => showPage('about'));
+  tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
 }
 
-async function selectOrg(orgId) {
-  currentOrg = orgId;
-  $('home-view').classList.toggle('hidden', orgId !== null);
-  $('org-view').classList.toggle('hidden', orgId === null);
-  renderTabs();
-  if (orgId === null) {
-    await refreshHome();
-    return;
+async function showPage(page, orgId = null) {
+  currentPage = page;
+  currentOrg = page === 'market' ? orgId : null;
+  for (const [p, viewId] of Object.entries(VIEWS)) {
+    $(viewId).classList.toggle('hidden', p !== page);
   }
-  const org = orgs.find((o) => o.id === orgId);
-  $('org-name').innerHTML =
-    `<img class="org-logo org-logo-lg" src="${org.logo}" alt="">` +
-    `${escapeHtml(org.name)} (${org.ticker})`;
-  $('org-blurb').textContent = org.blurb;
-  $('org-link').textContent = org.url;
-  $('org-link').href = org.url;
-  await refreshMarket();
+  renderTabs();
+  if (page === 'home') {
+    await refreshHome();
+  } else if (page === 'market') {
+    const org = orgs.find((o) => o.id === orgId);
+    $('org-name').innerHTML =
+      `<img class="org-logo org-logo-lg" src="${org.logo}" alt="">` +
+      `${escapeHtml(org.name)} (${org.ticker})`;
+    $('org-blurb').textContent = org.blurb;
+    $('org-link').textContent = org.url;
+    $('org-link').href = org.url;
+    await refreshMarket();
+  } else if (page === 'portfolio') {
+    await refreshPortfolio();
+  }
 }
 
 // --- Home page ---
@@ -137,16 +147,17 @@ async function refreshHome() {
   const list = $('home-orgs');
   list.innerHTML = '';
   for (const org of orgs) {
+    const valuation = org.lastPrice ? fmtCompact(org.lastPrice * org.totalShares) : '—';
     const card = document.createElement('div');
     card.className = 'org-card';
     card.innerHTML =
       `<div class="org-card-head">` +
       `<img class="org-logo" src="${org.logo}" alt="">` +
-      `<strong>${escapeHtml(org.name)}</strong>` +
-      `<span class="price">${org.lastPrice ? fmt(org.lastPrice) : '—'}</span></div>` +
-      `<div class="ticker">${org.ticker}</div>` +
-      `<p>${escapeHtml(org.blurb)}</p>`;
-    card.addEventListener('click', () => selectOrg(org.id));
+      `<span class="ticker-big">${org.ticker}</span>` +
+      `<span class="valuation">${valuation}</span></div>` +
+      `<div class="org-card-name">${escapeHtml(org.name)}</div>` +
+      sparkline(org.spark);
+    card.addEventListener('click', () => showPage('market', org.id));
     list.appendChild(card);
   }
 
@@ -157,6 +168,59 @@ async function refreshHome() {
         `<td>${fmtCompact(row.value)}</td></tr>`
     )
     .join('');
+  await refreshWallet();
+}
+
+// Tiny inline price graph for home-page cards.
+function sparkline(prices, w = 260, h = 40) {
+  if (!prices || prices.length < 2) return `<div class="spark spark-empty"></div>`;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const pts = prices
+    .map((p, i) => {
+      const x = (i / (prices.length - 1)) * w;
+      const y = h - 3 - ((p - min) / range) * (h - 6);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  return (
+    `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">` +
+    `<polyline points="${pts}" fill="none" stroke="#2e5a7a" stroke-width="1.5" ` +
+    `stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`
+  );
+}
+
+// --- Portfolio page ---
+async function refreshPortfolio() {
+  const cashEl = $('portfolio-cash');
+  const rowsEl = $('portfolio-holdings');
+  const totalEl = $('portfolio-total');
+  if (!currentUserId) {
+    cashEl.textContent = 'Create or select an account first.';
+    rowsEl.innerHTML = '';
+    totalEl.textContent = '';
+    return;
+  }
+  const user = await api(`/api/users/${currentUserId}`);
+  const held = orgs.filter((o) => (user.holdings[o.id] ?? 0) > 0);
+  let holdingsValue = 0;
+  rowsEl.innerHTML = held
+    .map((o) => {
+      const shares = user.holdings[o.id];
+      const value = o.lastPrice ? shares * o.lastPrice : 0;
+      holdingsValue += value;
+      return (
+        `<tr><td>${o.ticker}</td><td>${escapeHtml(o.name)}</td>` +
+        `<td>${shares.toLocaleString()}</td>` +
+        `<td>${o.lastPrice ? fmt(o.lastPrice) : '—'}</td>` +
+        `<td>${fmtWhole(value)}</td></tr>`
+      );
+    })
+    .join('');
+  if (held.length === 0) rowsEl.innerHTML = '<tr><td colspan="5">No holdings yet.</td></tr>';
+  cashEl.textContent = `Cash: ${fmt(user.balance)}`;
+  totalEl.textContent = `Total value: ${fmtWhole(user.balance + holdingsValue)}`;
   await refreshWallet();
 }
 
@@ -478,10 +542,11 @@ async function loadOrgs() {
 (async function init() {
   await loadOrgs();
   await loadUsers();
-  await selectOrg(null);
+  await showPage('home');
   setInterval(() => {
-    if (currentOrg === null) refreshHome().then(renderTabs);
-    else refreshMarket();
+    if (currentPage === 'home') refreshHome();
+    else if (currentPage === 'market') refreshMarket();
+    else if (currentPage === 'portfolio') refreshPortfolio();
     loadOrgs();
   }, 3000);
 })();

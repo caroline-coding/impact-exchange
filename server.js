@@ -255,7 +255,16 @@ app.get('/api/orgs', (req, res) => {
     const lastTrade = db
       .prepare('SELECT price FROM trades WHERE org = ? ORDER BY id DESC LIMIT 1')
       .get(org.id);
-    return { ...org, lastPrice: lastTrade ? lastTrade.price : null };
+    const totalShares = db
+      .prepare('SELECT COALESCE(SUM(shares), 0) AS s FROM holdings WHERE org = ?')
+      .get(org.id).s;
+    // Chronological recent prices for the home-page sparkline.
+    const spark = db
+      .prepare('SELECT price FROM trades WHERE org = ? ORDER BY id DESC LIMIT 60')
+      .all(org.id)
+      .map((r) => r.price)
+      .reverse();
+    return { ...org, lastPrice: lastTrade ? lastTrade.price : null, totalShares, spark };
   });
   res.json(orgs);
 });
