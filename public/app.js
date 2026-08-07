@@ -256,11 +256,10 @@ async function refreshMarket() {
   await refreshWallet();
 }
 
-// Prussian & Ochre chart series — solved (not picked) against this paper for
-// CVD separation, chroma, and 3:1 contrast; see design/README-restyle.md.
-// Treasury always wears slot 1.
-const SERIES_COLORS = ['#0457AA', '#069096', '#9C7820', '#943432', '#9967AF'];
-const OTHER_COLOR = '#9AA1AC';
+// Chart series: light Prussian, marigold, terracotta, verdigris, deep
+// Prussian; "Other" wears ivory. Treasury always wears slot 1.
+const SERIES_COLORS = ['#4C7EA8', '#DFA02A', '#B0562F', '#4E9B8F', '#16324F'];
+const OTHER_COLOR = '#D9CFB6';
 const PAPER = '#F6F5F1';
 
 function renderOwnership(holders) {
