@@ -184,6 +184,9 @@ main { padding: 8px 0 64px; }
 .book { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* Wide tables scroll sideways inside their panel instead of overflowing it. */
+.table-scroll { overflow-x: auto; }
+.table-scroll th, .table-scroll td { white-space: nowrap; }
 th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--hairline); }
 th {
   font-family: var(--sans);

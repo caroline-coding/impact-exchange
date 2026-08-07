@@ -99,10 +99,12 @@
 
     <section class="panel">
       <h3>Trade history</h3>
-      <table>
-        <thead><tr><th>When</th><th>Price</th><th>Qty</th><th>Total</th><th>Buyer</th><th>Seller</th></tr></thead>
-        <tbody id="trades"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When</th><th>Price</th><th>Qty</th><th>Total</th><th>Buyer</th><th>Seller</th></tr></thead>
+          <tbody id="trades"></tbody>
+        </table>
+      </div>
     </section>
 
   </main>
@@ -117,10 +119,12 @@
     <section class="panel">
       <h3>Portfolio</h3>
       <p id="portfolio-cash"></p>
-      <table>
-        <thead><tr><th>Ticker</th><th>Name</th><th>Shares</th><th>Last price</th><th>Value</th></tr></thead>
-        <tbody id="portfolio-holdings"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Ticker</th><th>Name</th><th>Shares</th><th>Last price</th><th>Value</th></tr></thead>
+          <tbody id="portfolio-holdings"></tbody>
+        </table>
+      </div>
       <p id="portfolio-total"></p>
     </section>
   </main>
