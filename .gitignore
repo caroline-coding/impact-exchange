@@ -7,3 +7,4 @@ ADMIN_PASSWORD.txt
 exchange.db
 exchange.db-shm
 exchange.db-wal
+.DS_Store
