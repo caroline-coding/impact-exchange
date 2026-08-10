@@ -354,6 +354,18 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px;
   margin-right: 10px;
 }
 
+/* About page */
+.about-content p, .about-content ul { max-width: 720px; margin: 10px 0; font-size: 15px; }
+.about-content ul { padding-left: 24px; }
+.about-content li { margin: 4px 0; }
+.about-content h3:not(:first-child) { margin-top: 32px; }
+.about-content h4 {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 20px 0 4px;
+}
+
 /* Comments */
 .comment { padding: 10px 0; border-bottom: 1px solid var(--hairline); }
 .comment:last-child { border-bottom: none; }
