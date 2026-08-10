@@ -106,8 +106,16 @@ CREATE TABLE IF NOT EXISTS trades (
   sell_order_id INTEGER NOT NULL REFERENCES orders(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  org TEXT NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_orders_book ON orders (org, side, status, price);
 CREATE INDEX IF NOT EXISTS idx_trades_org ON trades (org, id);
+CREATE INDEX IF NOT EXISTS idx_comments_org ON comments (org, id);
 `);
 
 const app = express();
@@ -327,6 +335,31 @@ app.get('/api/orgs/:org/book', (req, res) => {
       )
       .all(org, side);
   res.json({ bids: levels('buy', 'DESC'), asks: levels('sell', 'ASC') });
+});
+
+app.get('/api/orgs/:org/comments', (req, res) => {
+  const org = requireOrg(req.params.org).id;
+  res.json(
+    db
+      .prepare(
+        `SELECT c.id, c.body, c.created_at, u.name AS author
+         FROM comments c JOIN users u ON u.id = c.user_id
+         WHERE c.org = ? ORDER BY c.id DESC LIMIT 200`
+      )
+      .all(org)
+  );
+});
+
+app.post('/api/orgs/:org/comments', (req, res) => {
+  const org = requireOrg(req.params.org).id;
+  const user = requireUser(req.body.userId);
+  const body = String(req.body.body ?? '').trim();
+  if (!body) throw httpError(400, 'Comment is empty');
+  if (body.length > 2000) throw httpError(400, 'Comment is too long (2000 characters max)');
+  const id = db
+    .prepare('INSERT INTO comments (org, user_id, body) VALUES (?, ?, ?)')
+    .run(org, user.id, body).lastInsertRowid;
+  res.json({ id });
 });
 
 app.get('/api/leaderboard', (req, res) => {

@@ -83,7 +83,7 @@ header h1 em { font-style: italic; color: var(--accent); }
 }
 .account-bar label { font-size: 14px; color: var(--ink-2); }
 
-select, input, button {
+select, input, textarea, button {
   font: inherit;
   font-size: 14px;
   padding: 7px 12px;
@@ -328,6 +328,17 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px;
   vertical-align: -7px;
   margin-right: 10px;
 }
+
+/* Comments */
+.comment { padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+.comment:last-child { border-bottom: none; }
+.comment .meta { display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
+.comment .meta span { color: var(--muted); font-size: 12px; }
+.comment p { margin: 4px 0 0; font-size: 14px; white-space: pre-wrap; }
+.no-comments { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+#comment-form { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+#comment-form textarea { resize: vertical; font-size: 14px; }
+#comment-form button { align-self: flex-start; }
 
 /* Ownership chart */
 .own-wrap {

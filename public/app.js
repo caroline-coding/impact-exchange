@@ -14,6 +14,17 @@ const fmtCompact = (cents) => {
   if (dollars >= 1e6) return '$' + (dollars / 1e6).toFixed(1) + 'm';
   return '$' + Math.round(dollars).toLocaleString();
 };
+// Trade totals: three significant figures above a million ($1.25m, $12.5m,
+// $125m), whole dollars below.
+const fmtTotal = (cents) => {
+  const dollars = cents / 100;
+  if (dollars >= 1e6) {
+    const m = dollars / 1e6;
+    const decimals = m >= 100 ? 0 : m >= 10 ? 1 : 2;
+    return '$' + m.toFixed(decimals) + 'm';
+  }
+  return '$' + Math.round(dollars).toLocaleString();
+};
 // Timestamps are stored as UTC "YYYY-MM-DD HH:MM[:SS]".
 const parseTs = (ts) => new Date(ts.replace(' ', 'T') + 'Z');
 // Today's trades show a time; older ones a date (year only when it differs).
@@ -244,17 +255,62 @@ async function refreshPortfolio() {
 // --- Market data ---
 async function refreshMarket() {
   if (!currentOrg) return;
-  const [book, trades, holders] = await Promise.all([
+  const [book, trades, holders, comments] = await Promise.all([
     api(`/api/orgs/${currentOrg}/book`),
     api(`/api/orgs/${currentOrg}/trades`),
     api(`/api/orgs/${currentOrg}/holders`),
+    api(`/api/orgs/${currentOrg}/comments`),
   ]);
   renderBook(book);
   renderTrades(trades);
   renderChart(trades);
   renderOwnership(holders);
+  renderComments(comments);
   await refreshWallet();
 }
+
+// --- Comments ---
+function renderComments(comments) {
+  const wrap = $('comments');
+  wrap.innerHTML = '';
+  if (comments.length === 0) {
+    wrap.innerHTML = '<p class="no-comments">No comments yet.</p>';
+    return;
+  }
+  for (const c of comments) {
+    const div = document.createElement('div');
+    div.className = 'comment';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const author = document.createElement('strong');
+    author.textContent = c.author;
+    const when = document.createElement('span');
+    when.textContent = fmtWhen(c.created_at);
+    meta.append(author, when);
+    const body = document.createElement('p');
+    body.textContent = c.body;
+    div.append(meta, body);
+    wrap.appendChild(div);
+  }
+}
+
+$('comment-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('comment-error').textContent = '';
+  if (!currentUserId) {
+    $('comment-error').textContent = 'Create or select an account first.';
+    return;
+  }
+  const body = $('comment-body').value.trim();
+  if (!body) return;
+  try {
+    await api(`/api/orgs/${currentOrg}/comments`, { userId: currentUserId, body });
+    $('comment-body').value = '';
+    renderComments(await api(`/api/orgs/${currentOrg}/comments`));
+  } catch (err) {
+    $('comment-error').textContent = err.message;
+  }
+});
 
 // Chart series: light Prussian, marigold, terracotta, verdigris, deep
 // Prussian; "Other" wears ivory. Treasury always wears slot 1.
@@ -364,7 +420,7 @@ function renderTrades(trades) {
     .map(
       (t) =>
         `<tr><td>${fmtWhen(t.created_at)}</td><td>${fmt(t.price)}</td><td>${t.qty.toLocaleString()}</td>` +
-        `<td>${fmtWhole(t.price * t.qty)}</td>` +
+        `<td>${fmtTotal(t.price * t.qty)}</td>` +
         `<td>${escapeHtml(t.buyer)}</td><td>${escapeHtml(t.seller)}</td></tr>`
     )
     .join('');
