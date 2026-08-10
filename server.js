@@ -118,6 +118,16 @@ CREATE INDEX IF NOT EXISTS idx_trades_org ON trades (org, id);
 CREATE INDEX IF NOT EXISTS idx_comments_org ON comments (org, id);
 `);
 
+// Migration: trades gained a tag column for donation channels (Manifund
+// regranting, SFF), per the source spreadsheet's Notes.
+if (!db.prepare('PRAGMA table_info(trades)').all().some((c) => c.name === 'tag')) {
+  db.exec('ALTER TABLE trades ADD COLUMN tag TEXT');
+}
+
+// Donation-channel tags: aggregate views over tagged trades. They appear on
+// the leaderboard and in user search, and have profile pages like users do.
+const TAGS = { manifund: 'Manifund regranting', sff: 'SFF' };
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -274,6 +284,28 @@ function portfolioValue(userId, lastPrices) {
     .reduce((sum, h) => sum + h.shares * (lastPrices[h.org] ?? 0), 0);
 }
 
+// A tag's holdings are the shares bought through the channel; its cost basis
+// is what was spent on them.
+function tagAggregates(tag, lastPrices) {
+  const rows = db
+    .prepare('SELECT org, SUM(qty) AS shares, SUM(price * qty) AS cost FROM trades WHERE tag = ? GROUP BY org')
+    .all(tag)
+    .filter((r) => ORGS[r.org]);
+  let value = 0;
+  let cost = 0;
+  const holdings = rows.map((r) => {
+    value += r.shares * lastPrices[r.org];
+    cost += r.cost;
+    return {
+      org: r.org,
+      shares: r.shares,
+      lastPrice: lastPrices[r.org],
+      value: r.shares * lastPrices[r.org],
+    };
+  });
+  return { holdings, value, cost };
+}
+
 app.get('/api/orgs', (req, res) => {
   const orgs = Object.values(ORGS).map((org) => {
     const lastTrade = db
@@ -316,7 +348,29 @@ app.get('/api/users/search', (req, res) => {
         .all(`%${q}%`)
     : db.prepare('SELECT id, name FROM users ORDER BY name LIMIT 50').all();
   const lastPrices = getLastPrices();
-  res.json(rows.map((u) => ({ ...u, value: portfolioValue(u.id, lastPrices) })));
+  const tagRows = Object.entries(TAGS)
+    .filter(([, label]) => !q || label.toLowerCase().includes(q.toLowerCase()))
+    .map(([tag, label]) => ({ tag, name: label, isTag: true, value: tagAggregates(tag, lastPrices).value }));
+  const results = [...rows.map((u) => ({ ...u, value: portfolioValue(u.id, lastPrices) })), ...tagRows];
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  res.json(results);
+});
+
+app.get('/api/tags/:tag/profile', (req, res) => {
+  const label = TAGS[req.params.tag];
+  if (!label) throw httpError(404, 'Unknown tag');
+  const lastPrices = getLastPrices();
+  const { holdings } = tagAggregates(req.params.tag, lastPrices);
+  // The counterparty shown is the donor who gave through the channel.
+  const trades = db
+    .prepare(
+      `SELECT t.org, t.price, t.qty, t.created_at, 'buy' AS side,
+              b.name AS counterparty, t.buyer_id AS counterpartyId
+       FROM trades t JOIN users b ON b.id = t.buyer_id
+       WHERE t.tag = ? ORDER BY t.id DESC LIMIT 200`
+    )
+    .all(req.params.tag);
+  res.json({ tag: req.params.tag, name: label, isTag: true, holdings, trades });
 });
 
 app.get('/api/users/:id/profile', (req, res) => {
@@ -457,6 +511,18 @@ app.get('/api/leaderboard', (req, res) => {
     const cost = costByName[u.name] ?? 0;
     return { ...u, returns: cost > 0 ? u.value / cost : null };
   });
+
+  for (const [tag, label] of Object.entries(TAGS)) {
+    const agg = tagAggregates(tag, lastPrices);
+    if (agg.holdings.length === 0) continue;
+    entries.push({
+      tag,
+      name: label,
+      isTag: true,
+      value: agg.value,
+      returns: agg.cost > 0 ? agg.value / agg.cost : null,
+    });
+  }
 
   if (req.query.sort === 'returns') {
     entries = entries.filter((u) => u.returns !== null).sort((a, b) => b.returns - a.returns);

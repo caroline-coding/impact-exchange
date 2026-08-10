@@ -109,9 +109,11 @@ const VIEWS = {
   portfolio: 'portfolio-view',
   users: 'users-view',
   user: 'user-view',
+  tag: 'user-view', // tag pages reuse the user profile view
 };
 let marketsExpanded = false;
 let currentProfileId = null; // user id when currentPage === 'user'
+let currentProfileTag = null; // tag code when currentPage === 'tag'
 
 function renderTabs() {
   const nav = $('sidebar');
@@ -145,19 +147,22 @@ function renderTabs() {
     }
   }
   tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
-  tab('Users', currentPage === 'users' || currentPage === 'user', () => showPage('users'));
+  tab('Users', ['users', 'user', 'tag'].includes(currentPage), () => showPage('users'));
   tab('Admin', false, () => $('admin-dialog').showModal(), 'admin');
 }
 
-// `arg` is the org id for market pages, the user id for user pages.
+// `arg` is the org id for market pages, the user id for user pages, the
+// tag code for tag pages.
 async function showPage(page, arg = null) {
   currentPage = page;
   currentOrg = page === 'market' ? arg : null;
   currentProfileId = page === 'user' ? arg : null;
+  currentProfileTag = page === 'tag' ? arg : null;
   // Keep the active ticker visible in the sidebar.
   if (page === 'market') marketsExpanded = true;
-  for (const [p, viewId] of Object.entries(VIEWS)) {
-    $(viewId).classList.toggle('hidden', p !== page);
+  const activeView = VIEWS[page];
+  for (const viewId of new Set(Object.values(VIEWS))) {
+    $(viewId).classList.toggle('hidden', viewId !== activeView);
   }
   renderTabs();
   if (page === 'home') {
@@ -175,32 +180,41 @@ async function showPage(page, arg = null) {
     await refreshPortfolio();
   } else if (page === 'users') {
     await refreshUserSearch();
-  } else if (page === 'user') {
+  } else if (page === 'user' || page === 'tag') {
     await refreshProfile();
   }
 }
 
-// --- User pages ---
+// --- User and tag pages ---
 const userLink = (id, name) => `<a class="user-link" data-uid="${id}">${escapeHtml(name)}</a>`;
+// Tags render in italics wherever they appear.
+const tagLink = (tag, name) => `<a class="user-link tag-link" data-tag="${tag}">${escapeHtml(name)}</a>`;
+const entityLink = (row) => (row.isTag ? tagLink(row.tag, row.name) : userLink(row.id, row.name));
 
-// Any rendered user name navigates to that user's page.
+// Any rendered user or tag name navigates to its page.
 document.addEventListener('click', (e) => {
   const link = e.target.closest('.user-link');
-  if (link) showPage('user', Number(link.dataset.uid));
+  if (!link) return;
+  if (link.dataset.tag) showPage('tag', link.dataset.tag);
+  else showPage('user', Number(link.dataset.uid));
 });
 
 async function refreshUserSearch() {
   const q = $('user-search').value.trim();
   const results = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
   $('user-results').innerHTML = results
-    .map((u) => `<tr><td>${userLink(u.id, u.name)}</td><td>${fmtCompact(u.value)}</td></tr>`)
+    .map((u) => `<tr><td>${entityLink(u)}</td><td>${fmtCompact(u.value)}</td></tr>`)
     .join('');
 }
 $('user-search').addEventListener('input', refreshUserSearch);
 
 async function refreshProfile() {
-  const p = await api(`/api/users/${currentProfileId}/profile`);
+  const p =
+    currentPage === 'tag'
+      ? await api(`/api/tags/${currentProfileTag}/profile`)
+      : await api(`/api/users/${currentProfileId}/profile`);
   $('profile-name').textContent = p.name;
+  $('profile-name').classList.toggle('tag-name', Boolean(p.isTag));
   let holdingsValue = 0;
   $('profile-holdings').innerHTML = p.holdings
     .map((h) => {
@@ -273,7 +287,7 @@ async function refreshHome() {
   $('leaderboard').innerHTML = board
     .map(
       (row, i) =>
-        `<tr><td>${i + 1}</td><td>${userLink(row.id, row.name)}</td>` +
+        `<tr><td>${i + 1}</td><td>${entityLink(row)}</td>` +
         `<td>${fmtCompact(row.value)}</td><td>${fmtReturns(row.returns)}</td></tr>`
     )
     .join('');
