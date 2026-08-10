@@ -228,10 +228,19 @@ td { font-variant-numeric: lining-nums tabular-nums; }
 td:first-child, th:first-child { text-align: left; }
 tbody tr:last-child td { border-bottom: none; }
 /* Name columns read left-aligned: leaderboard holders, trade counterparties,
-   portfolio org names. */
+   portfolio/profile org names, profile trade market+side+counterparty. */
 table:has(#leaderboard) th:nth-child(2), table:has(#leaderboard) td:nth-child(2),
 table:has(#trades) th:nth-child(n+5), table:has(#trades) td:nth-child(n+5),
-table:has(#portfolio-holdings) th:nth-child(2), table:has(#portfolio-holdings) td:nth-child(2) { text-align: left; }
+table:has(#portfolio-holdings) th:nth-child(2), table:has(#portfolio-holdings) td:nth-child(2),
+table:has(#profile-holdings) th:nth-child(2), table:has(#profile-holdings) td:nth-child(2),
+table:has(#profile-trades) th:nth-child(2), table:has(#profile-trades) td:nth-child(2),
+table:has(#profile-trades) th:nth-child(3), table:has(#profile-trades) td:nth-child(3),
+table:has(#profile-trades) th:nth-child(7), table:has(#profile-trades) td:nth-child(7) { text-align: left; }
+
+.user-link { cursor: pointer; }
+.user-link:hover { color: var(--accent); text-decoration: underline; }
+
+#user-search { width: 100%; max-width: 380px; margin-bottom: 14px; }
 
 th.sortable { cursor: pointer; }
 th.sortable:hover { color: var(--ink); }

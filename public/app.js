@@ -102,8 +102,16 @@ $('create-user-btn').addEventListener('click', async () => {
 });
 
 // --- Navigation ---
-const VIEWS = { home: 'home-view', market: 'org-view', about: 'about-view', portfolio: 'portfolio-view' };
+const VIEWS = {
+  home: 'home-view',
+  market: 'org-view',
+  about: 'about-view',
+  portfolio: 'portfolio-view',
+  users: 'users-view',
+  user: 'user-view',
+};
 let marketsExpanded = false;
+let currentProfileId = null; // user id when currentPage === 'user'
 
 function renderTabs() {
   const nav = $('sidebar');
@@ -137,12 +145,15 @@ function renderTabs() {
     }
   }
   tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
+  tab('Users', currentPage === 'users' || currentPage === 'user', () => showPage('users'));
   tab('Admin', false, () => $('admin-dialog').showModal(), 'admin');
 }
 
-async function showPage(page, orgId = null) {
+// `arg` is the org id for market pages, the user id for user pages.
+async function showPage(page, arg = null) {
   currentPage = page;
-  currentOrg = page === 'market' ? orgId : null;
+  currentOrg = page === 'market' ? arg : null;
+  currentProfileId = page === 'user' ? arg : null;
   // Keep the active ticker visible in the sidebar.
   if (page === 'market') marketsExpanded = true;
   for (const [p, viewId] of Object.entries(VIEWS)) {
@@ -152,7 +163,7 @@ async function showPage(page, orgId = null) {
   if (page === 'home') {
     await refreshHome();
   } else if (page === 'market') {
-    const org = orgs.find((o) => o.id === orgId);
+    const org = orgs.find((o) => o.id === arg);
     $('org-name').innerHTML =
       `<img class="org-logo org-logo-lg" src="${org.logo}" alt="">` +
       `${escapeHtml(org.name)} (${org.ticker})`;
@@ -162,6 +173,65 @@ async function showPage(page, orgId = null) {
     await refreshMarket();
   } else if (page === 'portfolio') {
     await refreshPortfolio();
+  } else if (page === 'users') {
+    await refreshUserSearch();
+  } else if (page === 'user') {
+    await refreshProfile();
+  }
+}
+
+// --- User pages ---
+const userLink = (id, name) => `<a class="user-link" data-uid="${id}">${escapeHtml(name)}</a>`;
+
+// Any rendered user name navigates to that user's page.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('.user-link');
+  if (link) showPage('user', Number(link.dataset.uid));
+});
+
+async function refreshUserSearch() {
+  const q = $('user-search').value.trim();
+  const results = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
+  $('user-results').innerHTML = results
+    .map((u) => `<tr><td>${userLink(u.id, u.name)}</td><td>${fmtCompact(u.value)}</td></tr>`)
+    .join('');
+}
+$('user-search').addEventListener('input', refreshUserSearch);
+
+async function refreshProfile() {
+  const p = await api(`/api/users/${currentProfileId}/profile`);
+  $('profile-name').textContent = p.name;
+  let holdingsValue = 0;
+  $('profile-holdings').innerHTML = p.holdings
+    .map((h) => {
+      holdingsValue += h.value;
+      const org = orgs.find((o) => o.id === h.org);
+      return (
+        `<tr><td>${org ? org.ticker : h.org}</td><td>${escapeHtml(org ? org.name : h.org)}</td>` +
+        `<td>${h.shares.toLocaleString()}</td>` +
+        `<td>${h.lastPrice ? fmt(h.lastPrice) : '—'}</td>` +
+        `<td>${fmtTotal(h.value)}</td></tr>`
+      );
+    })
+    .join('');
+  if (p.holdings.length === 0) {
+    $('profile-holdings').innerHTML = '<tr><td colspan="5">No holdings.</td></tr>';
+  }
+  $('profile-summary').textContent = `Portfolio value: ${fmtCompact(holdingsValue)}`;
+  $('profile-trades').innerHTML = p.trades
+    .map((t) => {
+      const org = orgs.find((o) => o.id === t.org);
+      return (
+        `<tr><td>${fmtWhen(t.created_at)}</td><td>${org ? org.ticker : t.org}</td>` +
+        `<td class="${t.side === 'buy' ? 'bid' : 'ask'}">${t.side}</td>` +
+        `<td>${fmt(t.price)}</td><td>${t.qty.toLocaleString()}</td>` +
+        `<td>${fmtTotal(t.price * t.qty)}</td>` +
+        `<td>${userLink(t.counterpartyId, t.counterparty)}</td></tr>`
+      );
+    })
+    .join('');
+  if (p.trades.length === 0) {
+    $('profile-trades').innerHTML = '<tr><td colspan="7">No trades.</td></tr>';
   }
 }
 
@@ -203,7 +273,7 @@ async function refreshHome() {
   $('leaderboard').innerHTML = board
     .map(
       (row, i) =>
-        `<tr><td>${i + 1}</td><td>${escapeHtml(row.name)}</td>` +
+        `<tr><td>${i + 1}</td><td>${userLink(row.id, row.name)}</td>` +
         `<td>${fmtCompact(row.value)}</td><td>${fmtReturns(row.returns)}</td></tr>`
     )
     .join('');
@@ -302,6 +372,8 @@ function renderComments(comments) {
     const meta = document.createElement('div');
     meta.className = 'meta';
     const author = document.createElement('strong');
+    author.className = 'user-link';
+    author.dataset.uid = c.author_id;
     author.textContent = c.author;
     const when = document.createElement('span');
     when.textContent = fmtWhen(c.created_at);
@@ -415,7 +487,11 @@ function renderOwnership(holders) {
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
     swatch.style.background = seg.color;
-    const name = document.createElement('span');
+    const name = document.createElement(seg.id ? 'a' : 'span');
+    if (seg.id) {
+      name.className = 'user-link';
+      name.dataset.uid = seg.id;
+    }
     name.textContent = seg.name;
     const qty = document.createElement('span');
     qty.className = 'qty';
@@ -448,7 +524,7 @@ function renderTrades(trades) {
       (t) =>
         `<tr><td>${fmtWhen(t.created_at)}</td><td>${fmt(t.price)}</td><td>${t.qty.toLocaleString()}</td>` +
         `<td>${fmtTotal(t.price * t.qty)}</td>` +
-        `<td>${escapeHtml(t.buyer)}</td><td>${escapeHtml(t.seller)}</td></tr>`
+        `<td>${userLink(t.buyer_id, t.buyer)}</td><td>${userLink(t.seller_id, t.seller)}</td></tr>`
     )
     .join('');
 }

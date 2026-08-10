@@ -258,6 +258,22 @@ const cancelOrder = db.transaction((orderId, userId) => {
 });
 
 // --- API ---
+function getLastPrices() {
+  const prices = {};
+  for (const org of Object.keys(ORGS)) {
+    const t = db.prepare('SELECT price FROM trades WHERE org = ? ORDER BY id DESC LIMIT 1').get(org);
+    prices[org] = t ? t.price : 0;
+  }
+  return prices;
+}
+
+function portfolioValue(userId, lastPrices) {
+  return db
+    .prepare('SELECT org, shares FROM holdings WHERE user_id = ? AND shares > 0')
+    .all(userId)
+    .reduce((sum, h) => sum + h.shares * (lastPrices[h.org] ?? 0), 0);
+}
+
 app.get('/api/orgs', (req, res) => {
   const orgs = Object.values(ORGS).map((org) => {
     const lastTrade = db
@@ -266,12 +282,11 @@ app.get('/api/orgs', (req, res) => {
     const totalShares = db
       .prepare('SELECT COALESCE(SUM(shares), 0) AS s FROM holdings WHERE org = ?')
       .get(org.id).s;
-    // Chronological recent prices for the home-page sparkline.
+    // The full chronological price history for the home-page sparkline.
     const spark = db
-      .prepare('SELECT price FROM trades WHERE org = ? ORDER BY id DESC LIMIT 60')
+      .prepare('SELECT price FROM trades WHERE org = ? ORDER BY id')
       .all(org.id)
-      .map((r) => r.price)
-      .reverse();
+      .map((r) => r.price);
     return { ...org, lastPrice: lastTrade ? lastTrade.price : null, totalShares, spark };
   });
   res.json(orgs);
@@ -291,6 +306,46 @@ app.post('/api/users', (req, res) => {
     if (String(err.message).includes('UNIQUE')) throw httpError(400, 'Name already taken');
     throw err;
   }
+});
+
+app.get('/api/users/search', (req, res) => {
+  const q = String(req.query.q ?? '').trim();
+  const rows = q
+    ? db
+        .prepare('SELECT id, name FROM users WHERE name LIKE ? ORDER BY name LIMIT 50')
+        .all(`%${q}%`)
+    : db.prepare('SELECT id, name FROM users ORDER BY name LIMIT 50').all();
+  const lastPrices = getLastPrices();
+  res.json(rows.map((u) => ({ ...u, value: portfolioValue(u.id, lastPrices) })));
+});
+
+app.get('/api/users/:id/profile', (req, res) => {
+  const user = requireUser(req.params.id);
+  const lastPrices = getLastPrices();
+  const holdings = db
+    .prepare('SELECT org, shares FROM holdings WHERE user_id = ? AND shares > 0')
+    .all(user.id)
+    .filter((h) => ORGS[h.org])
+    .map((h) => ({
+      org: h.org,
+      shares: h.shares,
+      lastPrice: lastPrices[h.org],
+      value: h.shares * lastPrices[h.org],
+    }));
+  const trades = db
+    .prepare(
+      `SELECT t.org, t.price, t.qty, t.created_at,
+              CASE WHEN t.buyer_id = @id THEN 'buy' ELSE 'sell' END AS side,
+              CASE WHEN t.buyer_id = @id THEN s.name ELSE b.name END AS counterparty,
+              CASE WHEN t.buyer_id = @id THEN t.seller_id ELSE t.buyer_id END AS counterpartyId
+       FROM trades t
+       JOIN users b ON b.id = t.buyer_id
+       JOIN users s ON s.id = t.seller_id
+       WHERE t.buyer_id = @id OR t.seller_id = @id
+       ORDER BY t.id DESC LIMIT 200`
+    )
+    .all({ id: user.id });
+  res.json({ id: user.id, name: user.name, balance: user.balance, holdings, trades });
 });
 
 app.get('/api/users/:id', (req, res) => {
@@ -342,7 +397,7 @@ app.get('/api/orgs/:org/comments', (req, res) => {
   res.json(
     db
       .prepare(
-        `SELECT c.id, c.body, c.created_at, u.name AS author
+        `SELECT c.id, c.body, c.created_at, u.name AS author, c.user_id AS author_id
          FROM comments c JOIN users u ON u.id = c.user_id
          WHERE c.org = ? ORDER BY c.id DESC LIMIT 200`
       )
@@ -363,13 +418,7 @@ app.post('/api/orgs/:org/comments', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  const lastPrices = {};
-  for (const org of Object.keys(ORGS)) {
-    const t = db
-      .prepare('SELECT price FROM trades WHERE org = ? ORDER BY id DESC LIMIT 1')
-      .get(org);
-    lastPrices[org] = t ? t.price : 0;
-  }
+  const lastPrices = getLastPrices();
   // Hidden from the leaderboard: org accounts hold their own unissued shares
   // (not "owned impact"), and the donor aggregates aren't single holders.
   const hiddenNames = [
@@ -380,14 +429,14 @@ app.get('/api/leaderboard', (req, res) => {
   ];
   const rows = db
     .prepare(
-      `SELECT u.name, h.org, h.shares FROM holdings h
+      `SELECT u.id AS uid, u.name, h.org, h.shares FROM holdings h
        JOIN users u ON u.id = h.user_id
        WHERE h.shares > 0 AND u.name NOT IN (${hiddenNames.map(() => '?').join(',')})`
     )
     .all(...hiddenNames);
   const byUser = {};
   for (const r of rows) {
-    byUser[r.name] ??= { name: r.name, holdings: {}, value: 0 };
+    byUser[r.name] ??= { id: r.uid, name: r.name, holdings: {}, value: 0 };
     byUser[r.name].holdings[r.org] = r.shares;
     byUser[r.name].value += r.shares * lastPrices[r.org];
   }
@@ -422,7 +471,7 @@ app.get('/api/orgs/:org/holders', (req, res) => {
   res.json(
     db
       .prepare(
-        `SELECT u.name, h.shares FROM holdings h
+        `SELECT u.id, u.name, h.shares FROM holdings h
          JOIN users u ON u.id = h.user_id
          WHERE h.org = ? AND h.shares > 0
          ORDER BY h.shares DESC`
@@ -437,7 +486,8 @@ app.get('/api/orgs/:org/trades', (req, res) => {
     db
       .prepare(
         `SELECT t.id, t.price, t.qty, t.created_at,
-                b.name AS buyer, s.name AS seller
+                b.name AS buyer, s.name AS seller,
+                t.buyer_id, t.seller_id
          FROM trades t
          JOIN users b ON b.id = t.buyer_id
          JOIN users s ON s.id = t.seller_id

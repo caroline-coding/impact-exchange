@@ -128,6 +128,42 @@
     </section>
   </main>
 
+  <main id="users-view" class="hidden">
+    <section class="panel">
+      <h3>Users</h3>
+      <input id="user-search" placeholder="Search users…" autocomplete="off">
+      <table>
+        <thead><tr><th>Name</th><th>Portfolio value</th></tr></thead>
+        <tbody id="user-results"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <main id="user-view" class="hidden">
+    <section class="org-header panel">
+      <h2 id="profile-name"></h2>
+      <p id="profile-summary"></p>
+    </section>
+    <section class="panel">
+      <h3>Holdings</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Ticker</th><th>Name</th><th>Shares</th><th>Last price</th><th>Value</th></tr></thead>
+          <tbody id="profile-holdings"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>Trade history</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When</th><th>Market</th><th>Side</th><th>Price</th><th>Qty</th><th>Total</th><th>Counterparty</th></tr></thead>
+          <tbody id="profile-trades"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
   <main id="portfolio-view" class="hidden">
     <section class="panel">
       <h3>Portfolio</h3>
