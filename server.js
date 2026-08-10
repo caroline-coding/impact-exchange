@@ -376,6 +376,7 @@ app.get('/api/leaderboard', (req, res) => {
     ...Object.values(ORGS).map((o) => o.name),
     '~1,000 individual donors (LW/EA fundraiser)',
     'Manifund donors',
+    'Small donors',
   ];
   const rows = db
     .prepare(
@@ -390,11 +391,30 @@ app.get('/api/leaderboard', (req, res) => {
     byUser[r.name].holdings[r.org] = r.shares;
     byUser[r.name].value += r.shares * lastPrices[r.org];
   }
-  res.json(
-    Object.values(byUser)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 20)
-  );
+
+  // Cost basis: everything the user has spent buying shares. Returns are
+  // current holdings value over that spend (null when nothing was bought,
+  // e.g. shares granted by admin).
+  const costByName = {};
+  for (const r of db
+    .prepare(
+      `SELECT u.name AS name, SUM(t.price * t.qty) AS cost
+       FROM trades t JOIN users u ON u.id = t.buyer_id GROUP BY t.buyer_id`
+    )
+    .all()) {
+    costByName[r.name] = r.cost;
+  }
+  let entries = Object.values(byUser).map((u) => {
+    const cost = costByName[u.name] ?? 0;
+    return { ...u, returns: cost > 0 ? u.value / cost : null };
+  });
+
+  if (req.query.sort === 'returns') {
+    entries = entries.filter((u) => u.returns !== null).sort((a, b) => b.returns - a.returns);
+  } else {
+    entries.sort((a, b) => b.value - a.value);
+  }
+  res.json(entries.slice(0, 20));
 });
 
 app.get('/api/orgs/:org/holders', (req, res) => {

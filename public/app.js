@@ -166,9 +166,19 @@ async function showPage(page, orgId = null) {
 }
 
 // --- Home page ---
+let leaderboardSort = 'value'; // 'value' | 'returns'
+
+// e.g. 44x, 1.8x; dash when the holder never bought anything.
+const fmtReturns = (r) => (r == null ? '—' : r >= 10 ? Math.round(r) + 'x' : r.toFixed(1) + 'x');
+
 async function refreshHome() {
-  const [freshOrgs, board] = await Promise.all([api('/api/orgs'), api('/api/leaderboard')]);
+  const [freshOrgs, board] = await Promise.all([
+    api('/api/orgs'),
+    api(`/api/leaderboard?sort=${leaderboardSort}`),
+  ]);
   orgs = freshOrgs;
+  $('lb-sort-value').classList.toggle('active', leaderboardSort === 'value');
+  $('lb-sort-returns').classList.toggle('active', leaderboardSort === 'returns');
 
   const list = $('home-orgs');
   list.innerHTML = '';
@@ -194,10 +204,18 @@ async function refreshHome() {
     .map(
       (row, i) =>
         `<tr><td>${i + 1}</td><td>${escapeHtml(row.name)}</td>` +
-        `<td>${fmtCompact(row.value)}</td></tr>`
+        `<td>${fmtCompact(row.value)}</td><td>${fmtReturns(row.returns)}</td></tr>`
     )
     .join('');
   await refreshWallet();
+}
+
+for (const [id, sort] of [['lb-sort-value', 'value'], ['lb-sort-returns', 'returns']]) {
+  $(id).addEventListener('click', () => {
+    if (leaderboardSort === sort) return;
+    leaderboardSort = sort;
+    refreshHome();
+  });
 }
 
 // Tiny inline price graph for home-page cards.

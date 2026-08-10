@@ -233,6 +233,11 @@ table:has(#leaderboard) th:nth-child(2), table:has(#leaderboard) td:nth-child(2)
 table:has(#trades) th:nth-child(n+5), table:has(#trades) td:nth-child(n+5),
 table:has(#portfolio-holdings) th:nth-child(2), table:has(#portfolio-holdings) td:nth-child(2) { text-align: left; }
 
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--ink); }
+th.sortable.active { color: var(--accent); font-weight: 600; }
+th.sortable.active::after { content: " ▾"; }
+
 .bid { color: var(--bid); }
 .ask { color: var(--ask); }
 

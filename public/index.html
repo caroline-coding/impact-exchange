@@ -30,9 +30,12 @@
         <div id="home-orgs" class="home-orgs"></div>
       </section>
       <section class="panel">
-        <h3>Leaderboard <em>— largest portfolios</em></h3>
+        <h3>Leaderboard</h3>
         <table>
-          <thead><tr><th>#</th><th>Holder</th><th>Value</th></tr></thead>
+          <thead><tr><th>#</th><th>Holder</th>
+            <th id="lb-sort-value" class="sortable" title="Sort by portfolio value">Value</th>
+            <th id="lb-sort-returns" class="sortable" title="Sort by returns">Returns</th>
+          </tr></thead>
           <tbody id="leaderboard"></tbody>
         </table>
       </section>
