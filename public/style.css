@@ -203,6 +203,15 @@ main { padding: 8px 0 64px; }
 .book { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
 /* Wide tables scroll sideways inside their panel instead of overflowing it. */
 .table-scroll { overflow-x: auto; }
 .table-scroll th, .table-scroll td { white-space: nowrap; }

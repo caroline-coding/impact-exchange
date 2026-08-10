@@ -416,8 +416,16 @@ function renderBook(book) {
     .join('');
 }
 
+// Small trades clutter the table (the chart still shows every trade), so
+// totals of $1,000 and under are hidden unless the checkbox opts in.
+let lastTradesForTable = [];
+
 function renderTrades(trades) {
-  $('trades').innerHTML = trades
+  lastTradesForTable = trades;
+  const shown = $('show-all-trades').checked
+    ? trades
+    : trades.filter((t) => t.price * t.qty > 1000_00);
+  $('trades').innerHTML = shown
     .map(
       (t) =>
         `<tr><td>${fmtWhen(t.created_at)}</td><td>${fmt(t.price)}</td><td>${t.qty.toLocaleString()}</td>` +
@@ -426,6 +434,8 @@ function renderTrades(trades) {
     )
     .join('');
 }
+
+$('show-all-trades').addEventListener('change', () => renderTrades(lastTradesForTable));
 
 // Smallest "nice" step (1/2/2.5/5 × power of ten) at least `raw`.
 function niceStep(raw) {
