@@ -441,7 +441,7 @@ app.get('/api/orgs/:org/trades', (req, res) => {
          FROM trades t
          JOIN users b ON b.id = t.buyer_id
          JOIN users s ON s.id = t.seller_id
-         WHERE t.org = ? ORDER BY t.id DESC LIMIT 100`
+         WHERE t.org = ? ORDER BY t.id DESC LIMIT 500`
       )
       .all(org)
   );
