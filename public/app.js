@@ -14,15 +14,16 @@ const fmtCompact = (cents) => {
   if (dollars >= 1e6) return '$' + (dollars / 1e6).toFixed(1) + 'm';
   return '$' + Math.round(dollars).toLocaleString();
 };
-// Trade totals: three significant figures above a million ($1.25m, $12.5m,
-// $125m), whole dollars below.
+// Trade totals: three significant figures with a magnitude suffix
+// ($1.25m, $12.5m, $125m; $1.25k, $12.5k, $125k), whole dollars below $1k.
 const fmtTotal = (cents) => {
   const dollars = cents / 100;
-  if (dollars >= 1e6) {
-    const m = dollars / 1e6;
-    const decimals = m >= 100 ? 0 : m >= 10 ? 1 : 2;
-    return '$' + m.toFixed(decimals) + 'm';
-  }
+  const scaled = (v, suffix) => {
+    const decimals = v >= 100 ? 0 : v >= 10 ? 1 : 2;
+    return '$' + v.toFixed(decimals) + suffix;
+  };
+  if (dollars >= 1e6) return scaled(dollars / 1e6, 'm');
+  if (dollars >= 1e3) return scaled(dollars / 1e3, 'k');
   return '$' + Math.round(dollars).toLocaleString();
 };
 // Timestamps are stored as UTC "YYYY-MM-DD HH:MM[:SS]".
