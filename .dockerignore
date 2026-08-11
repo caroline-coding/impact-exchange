@@ -1,6 +1,0 @@
-node_modules
-*.log
-exchange.db-wal
-exchange.db-shm
-fly.toml
-.dockerignore
