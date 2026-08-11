@@ -128,8 +128,19 @@ if (!db.prepare('PRAGMA table_info(trades)').all().some((c) => c.name === 'tag')
 // the leaderboard and in user search, and have profile pages like users do.
 const TAGS = { manifund: 'Manifund regranting', sff: 'SFF' };
 
+// Read-only demo mode: everything is browsable, but account creation,
+// trading, granting, and commenting are disabled. Set READ_ONLY=0 to
+// re-enable them.
+const READ_ONLY = process.env.READ_ONLY !== '0';
+
 const app = express();
 app.use(express.json());
+app.use('/api', (req, res, next) => {
+  if (READ_ONLY && req.method !== 'GET') {
+    return res.status(403).json({ error: 'This is a read-only demo' });
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 function getHoldings(userId) {

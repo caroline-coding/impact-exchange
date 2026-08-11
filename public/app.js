@@ -1,7 +1,6 @@
 let orgs = [];
-let currentPage = 'home'; // 'home' | 'market' | 'about' | 'portfolio'
+let currentPage = 'home';
 let currentOrg = null; // org id when currentPage === 'market'
-let currentUserId = Number(localStorage.getItem('userId')) || null;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (cents) =>
@@ -22,7 +21,9 @@ const fmtTotal = (cents) => {
     const decimals = v >= 100 ? 0 : v >= 10 ? 1 : 2;
     return '$' + v.toFixed(decimals) + suffix;
   };
-  if (dollars >= 1e6) return scaled(dollars / 1e6, 'm');
+  // 999,500+ rounds into millions territory; showing it as "$1000k" reads
+  // worse than "$1.00m".
+  if (dollars >= 999500) return scaled(dollars / 1e6, 'm');
   if (dollars >= 1e3) return scaled(dollars / 1e3, 'k');
   return '$' + Math.round(dollars).toLocaleString();
 };
@@ -52,61 +53,11 @@ async function api(path, body) {
 
 $('site-title').addEventListener('click', () => showPage('home'));
 
-// --- Accounts ---
-async function loadUsers() {
-  const users = await api('/api/users');
-  for (const sel of [$('user-select'), $('admin-user')]) {
-    sel.innerHTML = '';
-    for (const u of users) {
-      const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.name;
-      sel.appendChild(opt);
-    }
-  }
-  if (users.length === 0) {
-    currentUserId = null;
-  } else if (!users.some((u) => u.id === currentUserId)) {
-    currentUserId = users[0].id;
-  }
-  if (currentUserId) $('user-select').value = currentUserId;
-  await refreshWallet();
-}
-
-// Balances live on the Portfolio page; this only keeps the market page's
-// open-orders table in sync with the selected account.
-async function refreshWallet() {
-  if (!currentUserId || currentPage !== 'market') return;
-  const user = await api(`/api/users/${currentUserId}`);
-  renderOpenOrders(user.openOrders.filter((o) => o.org === currentOrg));
-}
-
-$('user-select').addEventListener('change', (e) => {
-  currentUserId = Number(e.target.value);
-  localStorage.setItem('userId', currentUserId);
-  refreshWallet();
-});
-
-$('create-user-btn').addEventListener('click', async () => {
-  const name = $('new-user-name').value.trim();
-  if (!name) return;
-  try {
-    const user = await api('/api/users', { name });
-    $('new-user-name').value = '';
-    currentUserId = user.id;
-    localStorage.setItem('userId', currentUserId);
-    await loadUsers();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
 // --- Navigation ---
 const VIEWS = {
   home: 'home-view',
   market: 'org-view',
   about: 'about-view',
-  portfolio: 'portfolio-view',
   users: 'users-view',
   user: 'user-view',
   tag: 'user-view', // tag pages reuse the user profile view
@@ -146,9 +97,7 @@ function renderTabs() {
         showPage('market', org.id), 'sub');
     }
   }
-  tab('Portfolio', currentPage === 'portfolio', () => showPage('portfolio'));
   tab('Users', ['users', 'user', 'tag'].includes(currentPage), () => showPage('users'));
-  tab('Admin', false, () => $('admin-dialog').showModal(), 'admin');
 }
 
 // `arg` is the org id for market pages, the user id for user pages, the
@@ -176,8 +125,6 @@ async function showPage(page, arg = null) {
     $('org-link').textContent = org.url;
     $('org-link').href = org.url;
     await refreshMarket();
-  } else if (page === 'portfolio') {
-    await refreshPortfolio();
   } else if (page === 'users') {
     await refreshUserSearch();
   } else if (page === 'user' || page === 'tag') {
@@ -291,7 +238,6 @@ async function refreshHome() {
         `<td>${fmtCompact(row.value)}</td><td>${fmtReturns(row.returns)}</td></tr>`
     )
     .join('');
-  await refreshWallet();
 }
 
 for (const [id, sort] of [['lb-sort-value', 'value'], ['lb-sort-returns', 'returns']]) {
@@ -322,54 +268,18 @@ function sparkline(prices, w = 260, h = 40) {
   );
 }
 
-// --- Portfolio page ---
-async function refreshPortfolio() {
-  const cashEl = $('portfolio-cash');
-  const rowsEl = $('portfolio-holdings');
-  const totalEl = $('portfolio-total');
-  if (!currentUserId) {
-    cashEl.textContent = 'Create or select an account first.';
-    rowsEl.innerHTML = '';
-    totalEl.textContent = '';
-    return;
-  }
-  const user = await api(`/api/users/${currentUserId}`);
-  const held = orgs.filter((o) => (user.holdings[o.id] ?? 0) > 0);
-  let holdingsValue = 0;
-  rowsEl.innerHTML = held
-    .map((o) => {
-      const shares = user.holdings[o.id];
-      const value = o.lastPrice ? shares * o.lastPrice : 0;
-      holdingsValue += value;
-      return (
-        `<tr><td>${o.ticker}</td><td>${escapeHtml(o.name)}</td>` +
-        `<td>${shares.toLocaleString()}</td>` +
-        `<td>${o.lastPrice ? fmt(o.lastPrice) : '—'}</td>` +
-        `<td>${fmtWhole(value)}</td></tr>`
-      );
-    })
-    .join('');
-  if (held.length === 0) rowsEl.innerHTML = '<tr><td colspan="5">No holdings yet.</td></tr>';
-  cashEl.textContent = `Cash: ${fmt(user.balance)}`;
-  totalEl.textContent = `Total value: ${fmtWhole(user.balance + holdingsValue)}`;
-  await refreshWallet();
-}
-
 // --- Market data ---
 async function refreshMarket() {
   if (!currentOrg) return;
-  const [book, trades, holders, comments] = await Promise.all([
-    api(`/api/orgs/${currentOrg}/book`),
+  const [trades, holders, comments] = await Promise.all([
     api(`/api/orgs/${currentOrg}/trades`),
     api(`/api/orgs/${currentOrg}/holders`),
     api(`/api/orgs/${currentOrg}/comments`),
   ]);
-  renderBook(book);
   renderTrades(trades);
   renderChart(trades);
   renderOwnership(holders);
   renderComments(comments);
-  await refreshWallet();
 }
 
 // --- Comments ---
@@ -398,24 +308,6 @@ function renderComments(comments) {
     wrap.appendChild(div);
   }
 }
-
-$('comment-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  $('comment-error').textContent = '';
-  if (!currentUserId) {
-    $('comment-error').textContent = 'Create or select an account first.';
-    return;
-  }
-  const body = $('comment-body').value.trim();
-  if (!body) return;
-  try {
-    await api(`/api/orgs/${currentOrg}/comments`, { userId: currentUserId, body });
-    $('comment-body').value = '';
-    renderComments(await api(`/api/orgs/${currentOrg}/comments`));
-  } catch (err) {
-    $('comment-error').textContent = err.message;
-  }
-});
 
 // Chart series: light Prussian, marigold, terracotta, verdigris, deep
 // Prussian; "Other" wears ivory. Treasury always wears slot 1.
@@ -657,71 +549,6 @@ window.addEventListener('resize', () => {
   if (currentOrg !== null && lastTrades) renderChart(lastTrades);
 });
 
-function renderOpenOrders(openOrders) {
-  $('open-orders').innerHTML = openOrders
-    .map(
-      (o) =>
-        `<tr><td class="${o.side === 'buy' ? 'bid' : 'ask'}">${o.side}</td>` +
-        `<td>${fmt(o.price)}</td><td>${o.remaining}</td>` +
-        `<td><button class="cancel-btn" data-id="${o.id}">Cancel</button></td></tr>`
-    )
-    .join('');
-  for (const btn of document.querySelectorAll('.cancel-btn')) {
-    btn.addEventListener('click', async () => {
-      try {
-        await api(`/api/orders/${btn.dataset.id}/cancel`, { userId: currentUserId });
-        await refreshMarket();
-      } catch (err) {
-        alert(err.message);
-      }
-    });
-  }
-}
-
-// --- Order form ---
-$('order-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  $('order-error').textContent = '';
-  if (!currentUserId) {
-    $('order-error').textContent = 'Create or select an account first.';
-    return;
-  }
-  const side = document.querySelector('input[name="side"]:checked').value;
-  const price = Math.round(parseFloat($('order-price').value) * 100);
-  const qty = parseInt($('order-qty').value, 10);
-  try {
-    await api('/api/orders', { userId: currentUserId, org: currentOrg, side, price, qty });
-    $('order-price').value = '';
-    $('order-qty').value = '';
-    await refreshMarket();
-    await loadOrgs();
-  } catch (err) {
-    $('order-error').textContent = err.message;
-  }
-});
-
-// --- Admin ---
-$('admin-close-btn').addEventListener('click', () => $('admin-dialog').close());
-$('admin-grant-btn').addEventListener('click', async () => {
-  const msg = $('admin-msg');
-  msg.textContent = '';
-  try {
-    await api('/api/admin/grant', {
-      password: $('admin-password').value,
-      userId: Number($('admin-user').value),
-      cash: Math.round(parseFloat($('admin-cash').value || '0') * 100),
-      org: $('admin-org').value,
-      shares: parseInt($('admin-shares').value || '0', 10),
-    });
-    msg.textContent = 'Granted.';
-    msg.style.color = '#2e7d4f';
-    await refreshWallet();
-  } catch (err) {
-    msg.textContent = err.message;
-    msg.style.color = '#ae4a3f';
-  }
-});
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
@@ -730,25 +557,14 @@ function escapeHtml(s) {
 async function loadOrgs() {
   orgs = await api('/api/orgs');
   renderTabs();
-  const adminOrg = $('admin-org');
-  if (adminOrg.options.length === 0) {
-    for (const org of orgs) {
-      const opt = document.createElement('option');
-      opt.value = org.id;
-      opt.textContent = org.ticker;
-      adminOrg.appendChild(opt);
-    }
-  }
 }
 
 (async function init() {
   await loadOrgs();
-  await loadUsers();
   await showPage('home');
   setInterval(() => {
     if (currentPage === 'home') refreshHome();
     else if (currentPage === 'market') refreshMarket();
-    else if (currentPage === 'portfolio') refreshPortfolio();
     loadOrgs();
   }, 3000);
 })();
