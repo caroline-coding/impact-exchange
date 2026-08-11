@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Impact Exchange</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="site-title">Impact <em>Exchange</em></h1>
+  </header>
+
+  <div class="layout">
+    <nav id="sidebar"></nav>
+    <div class="content">
+      <main id="home-view" class="hidden">
+    <div class="home-grid">
+      <section class="panel">
+        <h3>Markets</h3>
+        <div id="home-orgs" class="home-orgs"></div>
+      </section>
+      <section class="panel">
+        <h3>Leaderboard</h3>
+        <table>
+          <thead><tr><th>#</th><th>Holder</th>
+            <th id="lb-sort-value" class="sortable" title="Sort by portfolio value">Value</th>
+            <th id="lb-sort-returns" class="sortable" title="Sort by returns">Returns</th>
+          </tr></thead>
+          <tbody id="leaderboard"></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <main id="org-view" class="hidden">
+    <section class="org-header panel">
+      <h2 id="org-name"></h2>
+      <p id="org-blurb"></p>
+      <a id="org-link" target="_blank" rel="noopener"></a>
+    </section>
+
+    <div class="columns">
+      <section class="panel">
+        <h3>Price history</h3>
+        <div id="chart-container"><svg id="price-chart"></svg></div>
+      </section>
+
+      <section class="panel">
+        <h3>Ownership</h3>
+        <div class="own-wrap">
+          <svg id="ownership-pie" viewBox="0 0 240 240" width="220" height="220"></svg>
+          <div id="ownership-legend" class="own-legend"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h3>Trade history</h3>
+      <label class="filter-toggle"><input type="checkbox" id="show-all-trades"> Show trades under $1,000</label>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When</th><th>Price</th><th>Qty</th><th>Total</th><th>Buyer</th><th>Seller</th></tr></thead>
+          <tbody id="trades"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Comments</h3>
+      <div id="comments"></div>
+    </section>
+
+  </main>
+
+  <main id="about-view" class="hidden">
+    <section class="panel about-content">
+      <h3>About</h3>
+      <p>We think the for-profit funding ecosystem has some cool properties. Different funders naturally come in at different stages, from angel investors who are good at spotting early opportunities to large funds who might invest in late-stage startups to public market traders. Funders race to back promising projects. And the more they get right, the more they’re rewarded with more money to invest in the future.</p>
+      <p>It would be great if more of those properties existed in nonprofit funding as well. We think that the flow from “person makes great early donation” → “person has more influence” is too weak. And as opposed to the VC world, where investors compete against each other to invest in something quickly, nonprofit funding is beset by “funder chicken,” in which a funder waits for other funders to fill an opportunity, each trying to preserve their capital. This makes fundraising a slog.</p>
+      <p>What if donating to nonprofits worked more like investing in companies? Impact Exchange is an impact market design that works similarly to how actual funding for startups works.</p>
+      <ul>
+        <li>Donating to an organization becomes buying impact equity in an organization.</li>
+        <li>Early donors to an org can hold onto their equity and watch its value go up as the organization does great things, or go down as it fizzles out. Or they can sell to a later funder.</li>
+        <li>The existence of markets gives us real-time info on how funders value the impact of orgs.</li>
+        <li>It also lets us measure the records of funders by the value of their impact portfolio.</li>
+      </ul>
+      <p>In this world, people who made prescient early donations would be able to sell out and have a lot more to donate. And the first funder in would get impact equity at a lower price.</p>
+      <p>Backfilled results are assuming the charity did the following:</p>
+      <ul>
+        <li>Started with 1m shares of impact equity.</li>
+        <li>In year 0, sold 1/5 of its equity.</li>
+        <li>In year 1, sold 1/6.</li>
+        <li>And so on, selling 1/(t+5) each year.</li>
+        <li>Allocate the impact equity proportionally to donors that year.</li>
+      </ul>
+      <p>A system like this is obviously an oversimplification, since in practice orgs and funders would be able to trade at any terms (valuation and amount) that were mutually agreeable. On the other hand, we don’t think it’s so much of an oversimplification as to be useless. In practice, in the startup ecosystem, terms for early funding rounds are often fairly standardized.</p>
+
+      <h3>FAQ</h3>
+      <h4>What does impact equity measure?</h4>
+      <p>If you own 1 share of a charity, that means you own 1/(shares_outstanding) of its impact, past and future.</p>
+      <h4>Why 20% in the first year?</h4>
+      <p>It’s the norm for startups, and it seemed like a reasonable starting point. If someone funds a charity for $1m in the year it’s founded, and it exists for 5 years doing $1m worth of good per year before shutting down, then the initial funder makes back their investment, which sounds about right.</p>
+      <h4>Why does the fraction of equity sold decrease every year?</h4>
+      <p>We think this makes sense for a charity that banks impact over time: the longer it’s been running, the less your donations this year are going to do for its total impact.</p>
+      <h4>Who are the final oracular funders?</h4>
+      <p>I don’t know, who are the final oracular funders in the stock market?</p>
+      <p>In our vision, there isn’t necessarily one final funder. As we learn more, valuations can get more and more accurate over time. If a funder thinks an org is undervalued at any point in time, they can express that by buying on the market. In our vision, if an org does some research that 10 years later unexpectedly pays off in some way, then 10 years later their valuation will shoot up.</p>
+      <h4>How will trades actually happen?</h4>
+      <p>Impact shares can be traded on an exchange or directly between counterparties. Given the analogy to early-stage startups, it’s probably unrealistic to expect impact equity to trade super-liquidly on an exchange. But we think having all trades print on a public exchange would be valuable for dissemination of information.</p>
+      <h4>What about taxes?</h4>
+      <p>Buying into the impact equity ecosystem is a tax-deductible donation to Manifund.</p>
+      <p>Sadly, this means that any amazing forecasters out there who want to speculate on impact equity and blow the proceeds on expensive wine won’t be able to. You won’t be able to get rich in the sense that translates to consumption. But if you invest well, you can get rich in the sense of having lots of funds to redirect to charities! We think this is a great and important property.</p>
+    </section>
+  </main>
+
+  <main id="users-view" class="hidden">
+    <section class="panel">
+      <h3>Users</h3>
+      <input id="user-search" placeholder="Search users…" autocomplete="off">
+      <table>
+        <thead><tr><th>Name</th><th>Portfolio value</th></tr></thead>
+        <tbody id="user-results"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <main id="user-view" class="hidden">
+    <section class="org-header panel">
+      <h2 id="profile-name"></h2>
+      <p id="profile-summary"></p>
+    </section>
+    <section class="panel" id="value-panel">
+      <h3>Portfolio value over time</h3>
+      <div id="value-chart-container"><svg id="value-chart"></svg></div>
+      <div class="chart-legend">
+        <span><i style="background:#1D4E74"></i> Portfolio value</span>
+        <span><i style="background:#DFA02A"></i> Net deposits</span>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>Holdings</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Ticker</th><th>Name</th><th>Shares</th><th>Last price</th><th>Value</th></tr></thead>
+          <tbody id="profile-holdings"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>Trade history</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When</th><th>Market</th><th>Side</th><th>Price</th><th>Qty</th><th>Total</th><th>Counterparty</th></tr></thead>
+          <tbody id="profile-trades"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+    </div>
+  </div>
+
+  <div id="own-tooltip" class="own-tooltip hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
