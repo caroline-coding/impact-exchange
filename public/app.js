@@ -156,10 +156,10 @@ async function refreshUserSearch() {
 $('user-search').addEventListener('input', refreshUserSearch);
 
 async function refreshProfile() {
-  const p =
-    currentPage === 'tag'
-      ? await api(`/api/tags/${currentProfileTag}/profile`)
-      : await api(`/api/users/${currentProfileId}/profile`);
+  const base = currentPage === 'tag' ? `/api/tags/${currentProfileTag}` : `/api/users/${currentProfileId}`;
+  const [p, history] = await Promise.all([api(`${base}/profile`), api(`${base}/history`)]);
+  $('value-panel').classList.toggle('hidden', history.length < 2);
+  if (history.length >= 2) renderValueChart(history);
   $('profile-name').textContent = p.name;
   $('profile-name').classList.toggle('tag-name', Boolean(p.isTag));
   let holdingsValue = 0;
@@ -307,6 +307,100 @@ function renderComments(comments) {
     div.append(meta, body);
     wrap.appendChild(div);
   }
+}
+
+// --- Portfolio value chart ---
+// Two step lines: mark-to-market portfolio value, and cumulative net
+// deposits. Both jump together when the user buys, so the gap between the
+// lines reads as actual P&L rather than a deposit spike.
+let lastHistory = null;
+
+function renderValueChart(series) {
+  lastHistory = series;
+  const svg = $('value-chart');
+  const w = svg.parentNode.clientWidth || 640;
+  const h = 220;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+  const m = { top: 14, right: 16, bottom: 26, left: 10 };
+  const points = series.map((p) => ({ ...p, time: parseTs(p.t).getTime() }));
+  const values = points.flatMap((p) => [p.value, p.deposits]);
+  const min = Math.min(0, ...values);
+  const max = Math.max(...values);
+  const pad = (max - min) * 0.08 || 100;
+  const lo = min;
+  const hi = max + pad;
+  const t0 = points[0].time;
+  const span = Math.max(points[points.length - 1].time - t0, 1);
+  const x = (t) => m.left + ((t - t0) / span) * (w - m.left - m.right);
+  const y = (v) => m.top + (1 - (v - lo) / (hi - lo)) * (h - m.top - m.bottom);
+
+  // Step path: hold each level until the next event, then jump.
+  const stepPath = (key) =>
+    points
+      .map((p, i) => (i === 0 ? `M ${x(p.time)} ${y(p[key])}` : `H ${x(p.time)} V ${y(p[key])}`))
+      .join(' ');
+
+  const step = niceStep((hi - lo) / 4);
+  let grid = '';
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) {
+    const gy = y(v);
+    grid +=
+      `<line x1="${m.left}" y1="${gy}" x2="${w - m.right}" y2="${gy}" stroke="#E3E2D9"/>` +
+      `<text x="${m.left + 2}" y="${gy - 5}" fill="#586374" font-size="11">${fmtCompact(v)}</text>`;
+  }
+
+  const fmtTick = (t) => {
+    const d = new Date(t);
+    if (span > 300 * 864e5) return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  let axis = '';
+  const seen = new Set();
+  for (const f of [0, 1 / 3, 2 / 3, 1]) {
+    const label = fmtTick(t0 + span * f);
+    if (seen.has(label)) continue;
+    seen.add(label);
+    const tx = x(t0 + span * f);
+    const anchor = tx < m.left + 40 ? 'start' : tx > w - m.right - 40 ? 'end' : 'middle';
+    axis += `<text x="${tx}" y="${h - 8}" text-anchor="${anchor}" fill="#586374" font-size="11">${label}</text>`;
+  }
+
+  svg.innerHTML =
+    grid +
+    axis +
+    `<path d="${stepPath('deposits')}" fill="none" stroke="#DFA02A" stroke-width="1.5" stroke-linejoin="round"/>` +
+    `<path d="${stepPath('value')}" fill="none" stroke="#1D4E74" stroke-width="2" stroke-linejoin="round"/>` +
+    `<line class="ch-line" y1="${m.top}" y2="${h - m.bottom}" stroke="#B9BFC9" visibility="hidden"/>`;
+
+  // Hover: nearest event, with value, deposits, and the P&L gap.
+  const chLine = svg.querySelector('.ch-line');
+  const tooltip = $('own-tooltip');
+  svg.onmousemove = (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * w;
+    // The prevailing point is the last one at or before the cursor.
+    let best = points[0];
+    for (const p of points) if (x(p.time) <= mx) best = p;
+    const bx = Math.max(x(best.time), m.left);
+    chLine.setAttribute('x1', bx);
+    chLine.setAttribute('x2', bx);
+    chLine.setAttribute('visibility', 'visible');
+    const when = new Date(best.time).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+    const pnl = best.value - best.deposits;
+    tooltip.textContent =
+      `${when} — value ${fmtCompact(best.value)}, deposits ${fmtCompact(best.deposits)}, ` +
+      `P&L ${pnl < 0 ? '−' : '+'}${fmtCompact(Math.abs(pnl))}`;
+    tooltip.classList.remove('hidden');
+    tooltip.style.left = Math.min(e.clientX + 12, window.innerWidth - tooltip.offsetWidth - 8) + 'px';
+    tooltip.style.top = e.clientY + 14 + 'px';
+  };
+  svg.onmouseleave = () => {
+    chLine.setAttribute('visibility', 'hidden');
+    tooltip.classList.add('hidden');
+  };
 }
 
 // Chart series: light Prussian, marigold, terracotta, verdigris, deep
@@ -547,6 +641,7 @@ function renderChart(trades) {
 
 window.addEventListener('resize', () => {
   if (currentOrg !== null && lastTrades) renderChart(lastTrades);
+  if ((currentPage === 'user' || currentPage === 'tag') && lastHistory) renderValueChart(lastHistory);
 });
 
 function escapeHtml(s) {

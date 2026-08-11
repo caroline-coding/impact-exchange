@@ -413,6 +413,57 @@ app.get('/api/users/:id/profile', (req, res) => {
   res.json({ id: user.id, name: user.name, balance: user.balance, holdings, trades });
 });
 
+// Portfolio value and cumulative net deposits over time, computed by
+// replaying every trade in timestamp order: each trade updates its org's
+// mark price; the subject's own trades also move their share counts and
+// deposits (buys add, sells subtract). One point per trade from the
+// subject's first involvement on, plus a closing point at "now".
+function valueHistory(isMine) {
+  const allTrades = db
+    .prepare('SELECT org, price, qty, buyer_id, seller_id, tag, created_at FROM trades ORDER BY created_at, id')
+    .all();
+  const lastPrice = {};
+  const shares = {};
+  let deposits = 0;
+  let involved = false;
+  const series = [];
+  for (const t of allTrades) {
+    lastPrice[t.org] = t.price;
+    const mine = isMine(t);
+    if (mine === 'buy') {
+      shares[t.org] = (shares[t.org] ?? 0) + t.qty;
+      deposits += t.price * t.qty;
+      involved = true;
+    } else if (mine === 'sell') {
+      shares[t.org] = (shares[t.org] ?? 0) - t.qty;
+      deposits -= t.price * t.qty;
+    }
+    if (!involved) continue;
+    const value = Object.entries(shares).reduce((s, [org, q]) => s + q * (lastPrice[org] ?? 0), 0);
+    series.push({ t: t.created_at, value, deposits });
+  }
+  if (series.length > 0) {
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    series.push({ ...series[series.length - 1], t: now });
+  }
+  return series;
+}
+
+app.get('/api/users/:id/history', (req, res) => {
+  const user = requireUser(req.params.id);
+  // Treasury accounts sell shares they were founded with, not shares bought
+  // through trades, so a trade replay can't reconstruct their position.
+  if (Object.values(ORGS).some((o) => o.name === user.name)) return res.json([]);
+  res.json(
+    valueHistory((t) => (t.buyer_id === user.id ? 'buy' : t.seller_id === user.id ? 'sell' : null))
+  );
+});
+
+app.get('/api/tags/:tag/history', (req, res) => {
+  if (!TAGS[req.params.tag]) throw httpError(404, 'Unknown tag');
+  res.json(valueHistory((t) => (t.tag === req.params.tag ? 'buy' : null)));
+});
+
 app.get('/api/users/:id', (req, res) => {
   const user = requireUser(req.params.id);
   res.json({
