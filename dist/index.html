@@ -79,9 +79,7 @@
   <main id="about-view" class="hidden">
     <section class="panel about-content">
       <h3>About</h3>
-      <p>We think the for-profit funding ecosystem has some cool properties. Different funders naturally come in at different stages, from angel investors who are good at spotting early opportunities to large funds who might invest in late-stage startups to public market traders. Funders race to back promising projects. And the more they get right, the more they’re rewarded with more money to invest in the future.</p>
-      <p>It would be great if more of those properties existed in nonprofit funding as well. We think that the flow from “person makes great early donation” → “person has more influence” is too weak. And as opposed to the VC world, where investors compete against each other to invest in something quickly, nonprofit funding is beset by “funder chicken,” in which a funder waits for other funders to fill an opportunity, each trying to preserve their capital. This makes fundraising a slog.</p>
-      <p>What if donating to nonprofits worked more like investing in companies? Impact Exchange is an impact market design that works similarly to how actual funding for startups works.</p>
+      <p>This demo is an impact market design that works similarly to how actual funding for startups works.</p>
       <ul>
         <li>Donating to an organization becomes buying impact equity in an organization.</li>
         <li>Early donors to an org can hold onto their equity and watch its value go up as the organization does great things, or go down as it fizzles out. Or they can sell to a later funder.</li>
@@ -89,31 +87,70 @@
         <li>It also lets us measure the records of funders by the value of their impact portfolio.</li>
       </ul>
       <p>In this world, people who made prescient early donations would be able to sell out and have a lot more to donate. And the first funder in would get impact equity at a lower price.</p>
-      <p>Backfilled results are assuming the charity did the following:</p>
-      <ul>
-        <li>Started with 1m shares of impact equity.</li>
-        <li>In year 0, sold 1/5 of its equity.</li>
-        <li>In year 1, sold 1/6.</li>
-        <li>And so on, selling 1/(t+5) each year.</li>
+
+      <h3>How the demo works</h3>
+      <p>It would be great if we had been running an impact market for several years and were now able to look at the results. Sadly, we haven’t. But in our demo, we imagine we had. The system we use:</p>
+      <ol>
+        <li>Pick an AI safety nonprofit.</li>
+        <li>Compile all public donation records.</li>
+        <li>Group into annual rounds.</li>
+        <li>Say that the charity did the following:
+          <ol>
+            <li>Started with 1m shares of impact equity.</li>
+            <li>In year 0, sold 1/5 of its equity.</li>
+            <li>In year 1, sold 1/6.</li>
+            <li>And so on, selling 1/(t+5) each year.</li>
+          </ol>
+        </li>
         <li>Allocate the impact equity proportionally to donors that year.</li>
+      </ol>
+      <p>If an organization raises $1 million in a round in exchange for 20% of its impact equity, that implies a $5 million impact valuation. Existing shareholders’ portfolios are marked at that valuation.</p>
+      <p>Say that the Widget Research Institute raises $1m in its first year, $200k from Aria and $800k from Ben. In our retrospective model, we say that WRI started with 1 million shares, created 250k for the round, sold 50k to Aria and 200k to Ben. Its current valuation is $5m, because it sold 20% of its equity for $1m.</p>
+      <p>If WRI raises $1.5m from Charlie the next year, its new valuation will be $7.5m. 250k more shares will be issued and sold to Charlie. Now Charlie owns 20% of the equity. Aria and Ben have been diluted from 4% and 16% stakes down to 3% and 13%, but the value of their holdings is up to $250k and $1m respectively, since the valuation has increased.</p>
+      <p>A system like this is obviously an oversimplification, since in practice orgs and funders would be able to trade at any terms (valuation and amount) that were mutually agreeable. In practice though, in the startup ecosystem, terms for early funding rounds are often fairly standardized. If this becomes an actual market, this could be a reasonable default for new orgs to start your pricing from.</p>
+      <p>Of course, since this only has five orgs, it’s far from showing the full portfolio of donations.</p>
+      <p>(You can also see <a href="https://docs.google.com/spreadsheets/d/19w6fTTakrL4qkrHJU2uQdTqDAc0e0n_acD9yLl33O20/edit" target="_blank" rel="noopener">Impact Valuations</a> for the data behind the website. Some funders like Longview and Macroscopic don’t generally publicly release their donations, so they don’t show up on the leaderboard.)</p>
+
+      <h3>Next steps</h3>
+      <p>We’re hoping this demo gives people a better idea of what an impact marketplace would look like. Here are the next steps we imagine:</p>
+      <ul>
+        <li>Buy-in from charities.
+          <ul>
+            <li>If a charity wants to do a fundraising round in the form of impact equity, they can do so with us! This would provide a lot of useful data on how the process goes, whether it makes it easier to find funding, and whether secondary trading emerges.</li>
+          </ul>
+        </li>
+        <li>Good donation data.
+          <ul>
+            <li>It was surprisingly hard to get good, complete donation data for this demo, which is the bottleneck to adding a lot more charities. We appreciated <a href="https://app.grantmaking.ai/database" target="_blank" rel="noopener">app.grantmaking.ai/database</a> and <a href="https://donations.vipulnaik.com/" target="_blank" rel="noopener">donations.vipulnaik.com</a>, but neither were complete, and the rest of the information was scattered across different websites in different formats.</li>
+          </ul>
+        </li>
+        <li>Feedback.
+          <ul>
+            <li>This is a first draft; we’re super interested in people’s thoughts on how this should work!</li>
+          </ul>
+        </li>
       </ul>
-      <p>A system like this is obviously an oversimplification, since in practice orgs and funders would be able to trade at any terms (valuation and amount) that were mutually agreeable. On the other hand, we don’t think it’s so much of an oversimplification as to be useless. In practice, in the startup ecosystem, terms for early funding rounds are often fairly standardized.</p>
 
       <h3>FAQ</h3>
       <h4>What does impact equity measure?</h4>
       <p>If you own 1 share of a charity, that means you own 1/(shares_outstanding) of its impact, past and future.</p>
       <h4>Why 20% in the first year?</h4>
-      <p>It’s the norm for startups, and it seemed like a reasonable starting point. If someone funds a charity for $1m in the year it’s founded, and it exists for 5 years doing $1m worth of good per year before shutting down, then the initial funder makes back their investment, which sounds about right.</p>
+      <p>The norm for startups is similar to this, and it seemed like a reasonable starting point. If someone funds a charity for $1m in the year it’s founded, and the charity exists for 5 years doing $1m worth of good per year before shutting down, then the initial funder makes back their investment, which sounds about right.</p>
       <h4>Why does the fraction of equity sold decrease every year?</h4>
       <p>We think this makes sense for a charity that banks impact over time: the longer it’s been running, the less your donations this year are going to do for its total impact.</p>
+      <h4>What about taxes?</h4>
+      <p>In our model, buying into the impact funding ecosystem would be a tax-deductible donation to Manifund.</p>
+      <p>Sadly, this means that any amazing forecasters out there who want to speculate on impact equity and blow the proceeds on expensive wine won’t be able to. You won’t be able to get rich in the sense that translates to consumption. But if you invest well, you can get rich in the sense of having lots of funds to redirect to charities! And not having to appeal to purely profit-driven investors makes things easier in various ways.</p>
       <h4>Who are the final oracular funders?</h4>
-      <p>I don’t know, who are the final oracular funders in the stock market?</p>
+      <p>Idk, who are the final oracular funders in the stock market?</p>
       <p>In our vision, there isn’t necessarily one final funder. As we learn more, valuations can get more and more accurate over time. If a funder thinks an org is undervalued at any point in time, they can express that by buying on the market. In our vision, if an org does some research that 10 years later unexpectedly pays off in some way, then 10 years later their valuation will shoot up.</p>
+      <p>Making the entire ecosystem charitable means there’s less of a need for kickstarting it with final oracular funders already in place. Purely selfish investors might be unwilling to invest without confidence that someone will buy their shares later, but if you’re a donor who wants to maximize their impact, you’re also happy to end up holding impact equity that is worth far more than you bought it for. And in a public market, this can also get you bragging rights.</p>
+      <p>Of course, we do hope for retrospective funders to provide liquidity, since that’s what allows good early grantmakers to redeploy more capital.</p>
       <h4>How will trades actually happen?</h4>
       <p>Impact shares can be traded on an exchange or directly between counterparties. Given the analogy to early-stage startups, it’s probably unrealistic to expect impact equity to trade super-liquidly on an exchange. But we think having all trades print on a public exchange would be valuable for dissemination of information.</p>
-      <h4>What about taxes?</h4>
-      <p>Buying into the impact equity ecosystem is a tax-deductible donation to Manifund.</p>
-      <p>Sadly, this means that any amazing forecasters out there who want to speculate on impact equity and blow the proceeds on expensive wine won’t be able to. You won’t be able to get rich in the sense that translates to consumption. But if you invest well, you can get rich in the sense of having lots of funds to redirect to charities! We think this is a great and important property.</p>
+      <h4>Will this cause negative-EV projects to get funded?</h4>
+      <p>Because the profits can only be used for more charitable donations, we think this is less of a worry. Someone who is primarily focused on impact won’t want to fund a project they think is net negative. Impact equity could even trade at negative prices.</p>
+      <p>Of course, normal charitable donations can and do end up funding a lot of things that turn out to be bad for the world. We just don’t think this design particularly exacerbates that problem.</p>
     </section>
   </main>
 

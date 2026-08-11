@@ -366,9 +366,12 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px;
 }
 
 /* About page */
-.about-content p, .about-content ul { max-width: 720px; margin: 10px 0; font-size: 15px; }
-.about-content ul { padding-left: 24px; }
+.about-content p, .about-content ul, .about-content ol { max-width: 720px; margin: 10px 0; font-size: 15px; }
+.about-content ul, .about-content ol { padding-left: 24px; }
 .about-content li { margin: 4px 0; }
+.about-content li ul, .about-content li ol { margin: 4px 0; }
+.about-content ol ol { list-style-type: lower-alpha; }
+.about-content a { color: var(--accent); }
 .about-content h3:not(:first-child) { margin-top: 32px; }
 .about-content h4 {
   font-family: var(--serif);
