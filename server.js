@@ -378,7 +378,7 @@ app.get('/api/tags/:tag/profile', (req, res) => {
       `SELECT t.org, t.price, t.qty, t.created_at, 'buy' AS side,
               b.name AS counterparty, t.buyer_id AS counterpartyId
        FROM trades t JOIN users b ON b.id = t.buyer_id
-       WHERE t.tag = ? ORDER BY t.id DESC LIMIT 200`
+       WHERE t.tag = ? ORDER BY t.created_at DESC, t.id DESC LIMIT 200`
     )
     .all(req.params.tag);
   res.json({ tag: req.params.tag, name: label, isTag: true, holdings, trades });
@@ -407,7 +407,7 @@ app.get('/api/users/:id/profile', (req, res) => {
        JOIN users b ON b.id = t.buyer_id
        JOIN users s ON s.id = t.seller_id
        WHERE t.buyer_id = @id OR t.seller_id = @id
-       ORDER BY t.id DESC LIMIT 200`
+       ORDER BY t.created_at DESC, t.id DESC LIMIT 200`
     )
     .all({ id: user.id });
   res.json({ id: user.id, name: user.name, balance: user.balance, holdings, trades });
